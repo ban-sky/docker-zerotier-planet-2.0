@@ -17,7 +17,7 @@
 - [相比上游的改动](#相比上游的改动)
 - [快速开始](#快速开始)：[脚本](#方式一脚本) · [Compose](#方式二compose) · [1Panel 应用商店](#方式三1panel-应用商店)
 - [配置](#配置) · [数据与备份](#数据与备份) · [从上游版本迁移](#从上游版本迁移)
-- [本地构建与测试](#本地构建与测试) · [GitHub Actions 构建与发布](#github-actions-构建与发布)
+- [本地构建与测试](#本地构建与测试) · [GitHub Actions 构建与发布](#github-actions-构建与发布) · [镜像地址](#镜像地址)
 - [安全模型与限制](#安全模型与限制) · [故障排查](#故障排查) · [更新日志](CHANGELOG.md)
 
 ## 界面预览
@@ -58,7 +58,7 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。
 - **#208**：`activeBridge`/`auth` 严格按布尔值处理，字符串 `"false"` 不再被当成真。
 - **#185**：用带 TTL 的 `BoundedMemoryStore` 替代会告警的默认 MemoryStore。
 - **#163**：不再自己生成 authtoken，而是等待 ZeroTier 生成后读取，避免 controller API 401。
-- **#216**：提供 `build.sh` 多架构构建与本地 `Dockerfile`，不再依赖上游 Docker Hub 镜像；镜像可自行推送到 GHCR。
+- **#216**：提供 `build.sh` 多架构构建与本地 `Dockerfile`，不再依赖上游 Docker Hub 镜像；发布时同时推 GHCR 与 Docker Hub（见 [镜像地址](#镜像地址)）。
 - **#157**：可设置 `HTTPS_HOST=::` 让管理界面同时监听 IPv6（默认 `0.0.0.0`）。
 - **#205**：仅构建 `linux/amd64` 与 `linux/arm64`，不提供 armv7。
 
@@ -417,36 +417,45 @@ docker images | grep docker-zerotier-planet-2.0
 ```
 
 归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`，可以直接用
-`docker-compose.yml` 里的 `image:` 字段引用。镜像也会发布到 GHCR：
+`docker-compose.yml` 里的 `image:` 字段引用。
 
-```text
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
-```
+### 镜像地址
 
-GHCR 包继承仓库可见性，本仓库为 public，因此无需登录即可 `docker pull`。
+每次发布都会同时推送到 **GHCR** 与 **Docker Hub**，两边内容完全一致（同一个多架构
+manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull` 不需要登录：
 
-#### 推送到 Docker Hub（可选）
-
-默认只推 GHCR。若要同时发布到 Docker Hub，配置三项即可：
-
-1. 在 Docker Hub 创建仓库 `docker-zerotier-planet-2.0`（公开或私有都可以）；
-2. Docker Hub → **Account settings → Security → New access token**，权限选 **Read & Write**；
-3. 本仓库 **Settings → Secrets and variables → Actions** 新增两个 repository secret：
-   - `DOCKERHUB_USERNAME`：Docker Hub 用户名
-   - `DOCKERHUB_TOKEN`：上一步生成的 access token（**不要**用登录密码）
-
-配置后，`image-build` 与 `release` 都会把同名 tag（`v2.1.0`、`latest`、`sha-<commit>`）
-以多架构 manifest 的形式镜像到 Docker Hub；没有配置时这两步自动跳过，不影响 GHCR。
+| Registry | 地址 |
+| --- | --- |
+| GHCR（GitHub） | `ghcr.io/ban-sky/docker-zerotier-planet-2.0` |
+| Docker Hub | `docker.io/lonelyx/docker-zerotier-planet-2.0` |
 
 ```bash
-docker pull docker.io/<DockerHub 用户名>/docker-zerotier-planet-2.0:v2.1.0
+# GHCR
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
+
+# Docker Hub
+docker pull lonelyx/docker-zerotier-planet-2.0:v2.1.0
 ```
 
-> 私有仓库需要先 `docker login`；Docker Hub 免费账号有拉取限流（匿名 100 次/6 小时，
-> 登录后 200 次/6 小时）。
-若你 fork 后把仓库改成私有，包也会变成私有，此时二选一：
+tag 含义（两个 registry 相同）：
+
+| tag | 内容 | 何时更新 |
+| --- | --- | --- |
+| `v2.1.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `latest` | 最近一次发布 | 同上 |
+| `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
+
+当前 `v2.1.0` 的 manifest（两边一致）：
+
+```text
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:dd1a860079fc2403639442aae3a650704fd839de8ebe2a25998f76b37414cee8
+  linux/amd64  -> sha256:397689b7e33e645562f1008e8cb7f768552bc156a2a226e44587e6dd08e2f9e0
+  linux/arm64  -> sha256:eceb615b702fdbc0c90d9c06eaa236dbd6b8be89469eb9387b78a8496bab5690
+```
+
+> GHCR 包继承仓库可见性，本仓库为 public；Docker Hub 仓库也是 public。
+> 若 fork 后把仓库改成私有，GHCR 包会一起变私有，此时二选一：
 
 ```bash
 # 方式 A：把 package 设为 public（GitHub → Packages → Package settings → Visibility）
@@ -455,12 +464,20 @@ docker pull docker.io/<DockerHub 用户名>/docker-zerotier-planet-2.0:v2.1.0
 echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 ```
 
-拉取并部署：
+> Docker Hub 免费账号有拉取限流：匿名 100 次 / 6 小时，登录后 200 次 / 6 小时。
+> 生产机上 `docker login` 可以避免共享 IP 被限流。
+
+拉取并部署（GHCR 或 Docker Hub 任选其一，镜像相同）：
 
 ```bash
+# GHCR
 docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
 
 sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
+  PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
+
+# Docker Hub（镜像源更快时可选）
+sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.1.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -474,6 +491,25 @@ sudo ./scripts/migrate-from-upstream.sh \
 ```
 
 工作流只在 GitHub 托管 runner 上编译；服务器只负责 `docker load`/`docker pull` 和运行。
+
+#### Docker Hub 同步是怎么做的
+
+同步不是重新构建：`image-build` 与 `release` 各有一个步骤，用
+`docker buildx imagetools create` 直接复制 manifest（含两个架构），所以 Docker Hub 与
+GHCR 是同一份镜像、同一个 digest。复制前先用 `docker/login-action` 登录，
+`release` 里对 `<版本>` 与 `latest` 各复制一次。
+
+fork 之后想开同样的行为，配置三步：
+
+1. 在 Docker Hub 建仓库 `docker-zerotier-planet-2.0`（不必手动初始化，首次 push 自动创建）；
+2. Docker Hub → **Account settings → Security → New access token**，权限选 **Read & Write**；
+3. 仓库 **Settings → Secrets and variables → Actions** 新增两个 repository secret：
+   - `DOCKERHUB_USERNAME`：Docker Hub 用户名（决定镜像命名空间）
+   - `DOCKERHUB_TOKEN`：上一步的 access token（**不要**用登录密码）
+
+没有这两个 secret 时，镜像步骤自动 `skipped`，只推 GHCR，其余流程不受影响。
+镜像名只写在两个 workflow 的 `dst="docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0"`
+一处，改名字只改这里。
 
 ### 升级上游版本
 

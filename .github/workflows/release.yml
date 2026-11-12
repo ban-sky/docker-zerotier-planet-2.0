@@ -432,6 +432,16 @@ jobs:
             echo "  ${IMAGE}:${VERSION}"
             echo '```'
             echo
+            echo "## Images"
+            echo
+            echo "| Registry | Reference |"
+            echo "| --- | --- |"
+            echo "| GHCR | \`${IMAGE}:${VERSION}\` |"
+            if [ -n "${DOCKERHUB_USERNAME:-}" ]; then
+              echo "| Docker Hub | \`docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0:${VERSION}\` |"
+            fi
+            echo
+            echo "Both references point at the same multi-arch manifest (\`linux/amd64\` + \`linux/arm64\`)."
             echo
             echo "## 1Panel"
             echo
@@ -448,8 +458,6 @@ jobs:
             echo
             echo "The initial admin password is in \`/app/config/admin-password\` inside the container;"
             echo "change it at first login, after which the file is deleted."
-            echo
-            echo "The image is also published to GHCR as \`${IMAGE}:${VERSION}\`."
           } > RELEASE_NOTES.md
           cat RELEASE_NOTES.md
 

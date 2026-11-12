@@ -21,7 +21,7 @@ upstream project.
 - [Changes from upstream](#changes-from-upstream)
 - [Quick start](#quick-start): [script](#option-1-script) · [Compose](#option-2-compose) · [1Panel App Store](#option-3-1panel-app-store)
 - [Configuration](#configuration) · [Data and backups](#data-and-backups) · [Migrating from upstream](#migrating-from-upstream)
-- [Local build and tests](#local-build-and-tests) · [Building and releasing with GitHub Actions](#building-and-releasing-with-github-actions)
+- [Local build and tests](#local-build-and-tests) · [Building and releasing with GitHub Actions](#building-and-releasing-with-github-actions) · [Image registries](#image-registries)
 - [Security model and limitations](#security-model-and-limitations) · [Troubleshooting](#troubleshooting) · [Changelog](CHANGELOG.md)
 
 ## Screenshots
@@ -64,7 +64,7 @@ collapses into a menu:
 - **#208**: `activeBridge`/`auth` are parsed as strict booleans; the string `"false"` is no longer truthy.
 - **#185**: the default MemoryStore warning is replaced by a TTL-bounded store.
 - **#163**: the entrypoint waits for ZeroTier's own authtoken instead of generating one, avoiding controller API 401s.
-- **#216**: multi-arch build script and local Dockerfile; no dependency on the upstream Docker Hub image. Images can be pushed to GHCR by the operator.
+- **#216**: multi-arch build script and local Dockerfile; no dependency on the upstream Docker Hub image. Releases go to both GHCR and Docker Hub (see [Image registries](#image-registries)).
 - **#157**: set `HTTPS_HOST=::` to listen on IPv6 as well (default `0.0.0.0`).
 - **#205**: only `linux/amd64` and `linux/arm64` are built; armv7 is not supported.
 
@@ -449,50 +449,85 @@ docker images | grep docker-zerotier-planet-2.0
 
 The archive restores the tag
 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`, so the `image:` field in
-`docker-compose.yml` can point straight at it. The image is also published to
-GHCR:
+`docker-compose.yml` can point straight at it.
 
-```text
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
-```
+### Image registries
 
-The GHCR package inherits the repository visibility. This repository is public,
-so `docker pull` works without logging in. If a fork is private the package is
-private too; then either make the package public (GitHub → Packages → Package
-settings → Visibility) or log in with a PAT that has `read:packages`:
+Every release is published to both **GHCR** and **Docker Hub**. They hold the same
+multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
+`docker pull` needs no login:
 
-#### Publishing to Docker Hub (optional)
-
-Only GHCR is used by default. To publish to Docker Hub as well, configure three things:
-
-1. Create the repository `docker-zerotier-planet-2.0` on Docker Hub (public or private);
-2. Docker Hub → **Account settings → Security → New access token**, scope **Read & Write**;
-3. In this repository: **Settings → Secrets and variables → Actions**, add two secrets:
-   - `DOCKERHUB_USERNAME` — your Docker Hub username
-   - `DOCKERHUB_TOKEN` — the access token from step 2 (**not** your password)
-
-Both workflows then mirror the same tags (`v2.1.0`, `latest`, `sha-<commit>`) to Docker Hub
-as multi-arch manifests. Without the secrets those steps are skipped and only GHCR is used.
+| Registry | Reference |
+| --- | --- |
+| GHCR (GitHub) | `ghcr.io/ban-sky/docker-zerotier-planet-2.0` |
+| Docker Hub | `docker.io/lonelyx/docker-zerotier-planet-2.0` |
 
 ```bash
-docker pull docker.io/<docker-hub-user>/docker-zerotier-planet-2.0:v2.1.0
+# GHCR
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
+
+# Docker Hub
+docker pull lonelyx/docker-zerotier-planet-2.0:v2.1.0
 ```
 
-> Private repositories need `docker login` first. Docker Hub rate-limits anonymous pulls
-> (100 per 6 hours, 200 when authenticated).
+Tag semantics (identical on both registries):
+
+| Tag | Contents | Updated when |
+| --- | --- | --- |
+| `v2.1.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `latest` | the most recent release | same |
+| `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
+
+Current `v2.1.0` manifest (identical on both registries):
+
+```text
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:dd1a860079fc2403639442aae3a650704fd839de8ebe2a25998f76b37414cee8
+  linux/amd64  -> sha256:397689b7e33e645562f1008e8cb7f768552bc156a2a226e44587e6dd08e2f9e0
+  linux/arm64  -> sha256:eceb615b702fdbc0c90d9c06eaa236dbd6b8be89469eb9387b78a8496bab5690
+```
+
+> The GHCR package inherits the repository visibility (public here). If a fork is private
+> the package is private too; then either make the package public (GitHub → Packages →
+> Package settings → Visibility) or log in with a PAT that has `read:packages`:
 
 ```bash
 echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 ```
 
-Pull and deploy without compiling on the server:
+> Docker Hub rate-limits anonymous pulls (100 per 6 hours, 200 when authenticated).
+> Run `docker login` on production hosts to avoid sharing a throttled IP.
+
+#### How the Docker Hub mirror works
+
+This repository already has the mirror enabled: both `image-build` and `release` carry a
+step that copies the manifest with `docker buildx imagetools create` — **without
+rebuilding** — so the Docker Hub image is byte-identical to GHCR and shares the same digest.
+
+To enable it on a fork, three steps:
+
+1. Create the repository `docker-zerotier-planet-2.0` on Docker Hub (no initialisation
+   needed — the first push creates it);
+2. Docker Hub → **Account settings → Security → New access token**, scope **Read & Write**;
+3. Repository → **Settings → Secrets and variables → Actions**, add two secrets:
+   - `DOCKERHUB_USERNAME` — your Docker Hub username (sets the image namespace)
+   - `DOCKERHUB_TOKEN` — the access token from step 2 (**not** your password)
+
+Without those secrets both mirror steps are `skipped` and only GHCR is used, so nothing
+else breaks. The image name lives in one place per workflow
+(`dst="docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0"`).
+
+Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
+# GHCR
 docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
 
 sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
+  PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
+
+# Docker Hub (useful when it is the faster registry for you)
+sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.1.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
