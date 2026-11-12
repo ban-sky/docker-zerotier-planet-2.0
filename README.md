@@ -66,18 +66,23 @@
 
 ```bash
 git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
-cd docker-zerotier-planet
+cd docker-zerotier-planet-2.0
 ./deploy.sh
 ```
 
 脚本会询问公网 IP 和端口，创建 `data/` 目录；本地没有镜像时先构建，然后启动容器并等待健康检查。
 已有同名容器时会先询问是否替换；数据目录不会被删除。
 
+> **不想在服务器上编译？** 直接下载
+> [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) 里的
+> `docker-zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
+> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0`。
+
 ### 方式二：Compose
 
 ```bash
 git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
-cd docker-zerotier-planet
+cd docker-zerotier-planet-2.0
 cat > .env <<'EOF'
 IP_ADDR4=203.0.113.10
 # IP_ADDR6=2001:db8::10
@@ -314,10 +319,9 @@ Release 附件：
 
 ```text
 docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz    # docker save 归档（gzip）
-docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz.sha256
 docker-zerotier-planet-2.0-v2.0.0-arm64.tar.gz    # 仅当勾选 include_arm64
-SHA256SUMS
-SOURCE
+SHA256SUMS                                       # 每个归档的校验和
+SOURCE                                           # 上游 commit 与构建参数
 LOAD-amd64-v2.0.0.txt                            # 加载与运行说明
 ```
 
@@ -337,7 +341,8 @@ ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
 ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
 ```
 
-GHCR 包默认私有；要在服务器上直接 `docker pull`，二选一：
+GHCR 包继承仓库可见性，本仓库为 public，因此无需登录即可 `docker pull`。
+若你 fork 后把仓库改成私有，包也会变成私有，此时二选一：
 
 ```bash
 # 方式 A：把 package 设为 public（GitHub → Packages → Package settings → Visibility）

@@ -71,7 +71,7 @@ upstream project.
 
 ```bash
 git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
-cd docker-zerotier-planet
+cd docker-zerotier-planet-2.0
 ./deploy.sh
 ```
 
@@ -80,11 +80,17 @@ image if it is missing, starts the container and waits for its health check. It
 asks before replacing an existing container and never deletes the data
 directory.
 
+> **Do not want to compile on the server?** Download
+> `docker-zerotier-planet-2.0-<version>-amd64.tar.gz` from the
+> [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) page
+> and `docker load` it, or pull
+> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0` directly.
+
 ### Option 2: Compose
 
 ```bash
 git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
-cd docker-zerotier-planet
+cd docker-zerotier-planet-2.0
 cat > .env <<'EOF'
 IP_ADDR4=203.0.113.10
 # IP_ADDR6=2001:db8::10
@@ -339,10 +345,9 @@ Release assets:
 
 ```text
 docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz    # gzipped docker save archive
-docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz.sha256
 docker-zerotier-planet-2.0-v2.0.0-arm64.tar.gz    # only when include_arm64 is set
-SHA256SUMS
-SOURCE
+SHA256SUMS                                       # checksums for every archive
+SOURCE                                           # upstream commits and build args
 LOAD-amd64-v2.0.0.txt                            # load and run instructions
 ```
 
@@ -364,9 +369,10 @@ ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
 ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
 ```
 
-The GHCR package is private after the first build. To pull it on the server,
-either make the package public (GitHub → Packages → Package settings →
-Visibility) or log in with a PAT that has `read:packages`:
+The GHCR package inherits the repository visibility. This repository is public,
+so `docker pull` works without logging in. If a fork is private the package is
+private too; then either make the package public (GitHub → Packages → Package
+settings → Visibility) or log in with a PAT that has `read:packages`:
 
 ```bash
 echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
