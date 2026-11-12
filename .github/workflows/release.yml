@@ -340,6 +340,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # Needed for 1panel/apps, which is packaged into a release asset below.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download packaged images
         uses: actions/download-artifact@v4
         with:
@@ -352,6 +356,19 @@ jobs:
 
       - name: List release assets
         run: ls -lh dist
+
+      # The 1Panel app package lives in the repo (1panel/apps/zerotier-planet).
+      # Ship it as an asset so the panel can be fed from a Release without a
+      # git checkout. The tarball has the app directory at its root, so
+      # `tar -xzf` into .../resource/apps/local/ drops it in place.
+      - name: Package the 1Panel app
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          tar -czf "dist/1panel-app-${VERSION}.tar.gz" -C 1panel/apps zerotier-planet
+          tar -tzf "dist/1panel-app-${VERSION}.tar.gz" | head -20
+          ls -lh "dist/1panel-app-${VERSION}.tar.gz"
 
       - name: Combine checksums
         run: |
@@ -386,7 +403,12 @@ jobs:
             echo "| File | Description |"
             echo "| --- | --- |"
             for f in dist/*.tar.gz; do
-              echo "| \`$(basename "$f")\` | \`docker save\` archive, load with \`docker load\` |"
+              base="$(basename "$f")"
+              case "$base" in
+                1panel-app-*) desc="1Panel app package (extract into /opt/1panel/resource/apps/local)" ;;
+                *) desc="\`docker save\` archive, load with \`docker load\`" ;;
+              esac
+              echo "| \`$base\` | $desc |"
             done
             echo "| \`SHA256SUMS\` | Checksums for every archive |"
             echo "| \`SOURCE\` | Exact upstream commits and build arguments |"
@@ -404,6 +426,20 @@ jobs:
             echo "  -v \"\$PWD/data/one:/var/lib/zerotier-one\" \\"
             echo "  ${IMAGE}:${VERSION}"
             echo '```'
+            echo
+            echo
+            echo "## 1Panel"
+            echo
+            echo "This release also ships \`1panel-app-${VERSION}.tar.gz\`, a local app package for"
+            echo "[1Panel](https://1panel.cn/):"
+            echo
+            echo '```bash'
+            echo "sudo tar -xzf 1panel-app-${VERSION}.tar.gz -C /opt/1panel/resource/apps/local"
+            echo '```'
+            echo
+            echo "Then refresh the app list in the panel (App Store → Update app list) and install"
+            echo "**ZeroTier Planet**. The repository also ships \`scripts/install-1panel-app.sh\` for"
+            echo "the same job."
             echo
             echo "The initial admin password is in \`/app/config/admin-password\` inside the container;"
             echo "change it at first login, after which the file is deleted."

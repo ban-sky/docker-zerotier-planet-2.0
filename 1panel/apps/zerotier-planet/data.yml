@@ -1,0 +1,34 @@
+name: ZeroTier Planet 2.0
+tags:
+  - VPN
+  - 网络
+title: 自建 ZeroTier planet 与网络控制器（安全加固版）
+description: 在 Docker 中运行自己的 ZeroTier planet 与 ztncui 控制器，默认 TLS、随机管理员密码、需鉴权的 planet 下载服务。
+additionalProperties:
+  key: zerotier-planet
+  name: ZeroTier Planet
+  tags:
+    - VPN
+    - Tool
+  shortDescZh: 自建 ZeroTier planet 与控制器，默认 TLS 与随机管理员密码
+  shortDescEn: Self-hosted ZeroTier planet and controller, TLS and random admin password by default
+  description:
+    en: "Self-hosted ZeroTier planet and network controller in Docker. TLS, a random admin password and an authenticated file server are on by default; images are published for amd64 and arm64."
+    es-es: "Planet de ZeroTier y controlador de red autoalojados en Docker. TLS, contraseña de administrador aleatoria y servidor de archivos autenticado activos por defecto; imágenes para amd64 y arm64."
+    ja: "Docker 上で自前の ZeroTier planet とネットワークコントローラーを運用。TLS・ランダムな管理者パスワード・認証付きファイルサーバーが既定で有効、amd64 と arm64 のイメージを提供。"
+    ms: "ZeroTier planet dan pengawal rangkaian hos sendiri dalam Docker. TLS, kata laluan pentadbir rawak dan pelayan fail yang disahkan dihidupkan secara lalai; imej untuk amd64 dan arm64."
+    pt-br: "ZeroTier planet e controlador de rede auto-hospedados em Docker. TLS, senha de administrador aleatória e servidor de arquivos autenticado já vêm ativos; imagens para amd64 e arm64."
+    ru: "Собственный ZeroTier planet и сетевой контроллер в Docker. По умолчанию включены TLS, случайный пароль администратора и файловый сервер с аутентификацией; образы для amd64 и arm64."
+    ko: "Docker에서 자체 ZeroTier planet과 네트워크 컨트롤러를 운영합니다. TLS, 임의 관리자 비밀번호, 인증이 필요한 파일 서버가 기본으로 켜져 있으며 amd64와 arm64 이미지를 제공합니다."
+    zh-Hant: "在 Docker 中自建 ZeroTier planet 與網路控制器。預設啟用 TLS、隨機管理員密碼與需驗證的檔案伺服器，提供 amd64 與 arm64 映像。"
+    zh: "在 Docker 中自建 ZeroTier planet 与网络控制器。默认启用 TLS、随机管理员密码和需鉴权的文件服务器，提供 amd64 与 arm64 镜像。"
+    tr: "Docker üzerinde kendi ZeroTier planet ve ağ denetleyicinizi çalıştırın. TLS, rastgele yönetici parolası ve kimlik doğrulamalı dosya sunucusu varsayılan olarak açıktır; amd64 ve arm64 imajları."
+  type: tool
+  crossVersionUpdate: true
+  limit: 0
+  website: https://github.com/ban-sky/docker-zerotier-planet-2.0
+  github: https://github.com/ban-sky/docker-zerotier-planet-2.0
+  document: https://github.com/ban-sky/docker-zerotier-planet-2.0#readme
+  architectures:
+    - amd64
+    - arm64

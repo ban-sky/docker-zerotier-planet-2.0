@@ -15,6 +15,15 @@ upstream project.
 > non-profits/charities and paid services **must not** use the bundled
 > controller. See [NOTICE](NOTICE) and `/usr/share/licenses/zerotier/`.
 
+## Contents
+
+- [Screenshots](#screenshots)
+- [Changes from upstream](#changes-from-upstream)
+- [Quick start](#quick-start): [script](#option-1-script) · [Compose](#option-2-compose) · [1Panel App Store](#option-3-1panel-app-store)
+- [Configuration](#configuration) · [Data and backups](#data-and-backups) · [Migrating from upstream](#migrating-from-upstream)
+- [Local build and tests](#local-build-and-tests) · [Building and releasing with GitHub Actions](#building-and-releasing-with-github-actions)
+- [Security model and limitations](#security-model-and-limitations) · [Troubleshooting](#troubleshooting) · [Changelog](CHANGELOG.md)
+
 ## Screenshots
 
 The admin UI (ztncui 0.9.0) was rebuilt as a responsive card layout: Bootstrap 3
@@ -77,7 +86,23 @@ collapses into a menu:
 - Compose defaults to `read_only`, `no-new-privileges` and a `tmpfs` `/tmp`.
 - `SECURITY.md`, a disclosure process, dependency lockfiles and regression tests.
 
+### Deployment integrations (2.1.0)
+
+- Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
+  panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
+  release version (e.g. `v2.1.0`) so the panel can detect updates.
+- The app package is published next to the `docker save` archives in every Release, and
+  `SHA256SUMS` covers both.
+
 ## Quick start
+
+Pick one of the three ways — they end up with the same image and the same data layout:
+
+| Option | Best for | What it does |
+| --- | --- | --- |
+| [Script](#option-1-script) | a plain Linux host | asks for the public address and ports, creates the directories, builds or pulls the image, waits for the health check |
+| [Compose](#option-2-compose) | an existing compose workflow | you write `.env` yourself, full control over every parameter |
+| [1Panel App Store](#option-3-1panel-app-store) | you already run 1Panel | ships an app package, install from the panel's form, manage it visually |
 
 ### Requirements
 
@@ -103,7 +128,7 @@ directory.
 > `docker-zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0` directly.
+> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0` directly.
 
 ### Option 2: Compose
 
@@ -117,6 +142,50 @@ EOF
 # build locally on first use
 docker compose up -d --build
 ```
+
+### Option 3: 1Panel App Store
+
+The repository ships a 1Panel app package ([`1panel/apps/zerotier-planet`](1panel)),
+so the panel can install it from a form instead of a shell session.
+
+```bash
+git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
+cd docker-zerotier-planet-2.0
+sudo ./scripts/install-1panel-app.sh
+```
+
+No checkout? Use the Release asset instead:
+
+```bash
+sudo tar -xzf 1panel-app-v2.1.0.tar.gz -C /opt/1panel/resource/apps/local
+```
+
+Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
+and install. The form asks for:
+
+| Field | Meaning |
+| --- | --- |
+| Public IPv4 | the address advertised in the planet, **required** (use the mapped address behind NAT) |
+| Public IPv6 | optional |
+| Time zone | defaults to `Asia/Shanghai` |
+| ZeroTier port | host UDP port, default 9994 |
+| Admin UI port | host TCP port, default 3443 (HTTPS) |
+| File server port | host TCP port, default 3000 (HTTPS, key required) |
+
+Data lives in `data/` inside the 1Panel app directory (`config`, `dist`, `one`),
+so upgrading the container keeps everything. First login password:
+
+```bash
+# open the app "Terminal" in the panel
+cat /app/config/admin-password
+# or look for it on the host (path depends on the 1Panel install location)
+sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
+```
+
+> The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
+> the **professional edition** "custom repository" can point at the `1panel/apps`
+> directory of this repository as well. The image tag inside the package is pinned
+> to `v2.1.0` (never `latest`) so the panel can detect version updates.
 
 ### First login
 
@@ -341,8 +410,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.0.0 -m "docker-zerotier-planet 2.0"
-git push origin v2.0.0
+git tag -a v2.1.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.1.0
 ```
 
 The tag runs four jobs:
@@ -357,33 +426,34 @@ The tag runs four jobs:
    parameter stays disabled, path traversal returns 404, and the random admin
    password lives in a 0600 file without ever appearing in the container log.
 4. **release** — writes `SHA256SUMS` and `SOURCE` (the exact upstream commits),
-   creates the GitHub Release with the archives attached, and assembles a
-   multi-arch manifest in GHCR.
+   packages the 1Panel app (`1panel-app-<version>.tar.gz`), creates the GitHub
+   Release with the archives attached, and assembles a multi-arch manifest in GHCR.
 
 Release assets:
 
 ```text
-docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz    # gzipped docker save archive
-docker-zerotier-planet-2.0-v2.0.0-arm64.tar.gz    # only when include_arm64 is set
+docker-zerotier-planet-2.0-v2.1.0-amd64.tar.gz    # gzipped docker save archive
+docker-zerotier-planet-2.0-v2.1.0-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-v2.1.0.tar.gz                          # 1Panel app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-v2.0.0.txt                            # load and run instructions
+LOAD-amd64-v2.1.0.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz
+docker load < docker-zerotier-planet-2.0-v2.1.0-amd64.tar.gz
 docker images | grep docker-zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0`, so the `image:` field in
+`ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`, so the `image:` field in
 `docker-compose.yml` can point straight at it. The image is also published to
 GHCR:
 
 ```text
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
 ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
 ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
 ```
@@ -400,9 +470,9 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 Pull and deploy without compiling on the server:
 
 ```bash
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -411,7 +481,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 

@@ -11,6 +11,15 @@
 > 场景**不得**使用本镜像中的 controller。详见 [NOTICE](NOTICE) 与
 > `/usr/share/licenses/zerotier/`。
 
+## 目录
+
+- [界面预览](#界面预览)
+- [相比上游的改动](#相比上游的改动)
+- [快速开始](#快速开始)：[脚本](#方式一脚本) · [Compose](#方式二compose) · [1Panel 应用商店](#方式三1panel-应用商店)
+- [配置](#配置) · [数据与备份](#数据与备份) · [从上游版本迁移](#从上游版本迁移)
+- [本地构建与测试](#本地构建与测试) · [GitHub Actions 构建与发布](#github-actions-构建与发布)
+- [安全模型与限制](#安全模型与限制) · [故障排查](#故障排查) · [更新日志](CHANGELOG.md)
+
 ## 界面预览
 
 管理界面（ztncui 0.9.0）重做为响应式卡片布局：移除了 Bootstrap 3 与 jQuery，
@@ -70,7 +79,21 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。
 - `docker-compose.yml` 默认 `read_only`、`no-new-privileges`、`tmpfs /tmp`。
 - 增加 `SECURITY.md`、漏洞披露流程、依赖锁定和回归测试。
 
+### 部署集成（2.1.0）
+
+- 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
+  可视化启停与升级；镜像 tag 固定版本号（如 `v2.1.0`），方便面板比对版本。
+- 应用包与 `docker save` 归档一起发布在 Release，`SHA256SUMS` 覆盖两者。
+
 ## 快速开始
+
+三种部署方式任选其一，装机结果一致（同一个镜像、同一套数据目录）：
+
+| 方式 | 适合场景 | 说明 |
+| --- | --- | --- |
+| [脚本](#方式一脚本) | 普通 Linux 主机 | 交互式询问公网 IP 与端口，自动建目录、构建或拉取镜像并等待健康检查 |
+| [Compose](#方式二compose) | 已有 compose 工作流 | 手写 `.env`，参数完全可控 |
+| [1Panel 应用商店](#方式三1panel-应用商店) | 已在用 1Panel 面板 | 仓库自带应用包，面板里填表安装，后续可视化启停/升级 |
 
 ### 要求
 
@@ -93,7 +116,7 @@ cd docker-zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) 里的
 > `docker-zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0`。
+> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`。
 
 ### 方式二：Compose
 
@@ -107,6 +130,48 @@ EOF
 # 首次使用本地构建
 docker compose up -d --build
 ```
+
+### 方式三：1Panel 应用商店
+
+仓库自带 1Panel 应用包（[`1panel/apps/zerotier-planet`](1panel)），装进面板的本地应用商店
+后即可可视化安装。
+
+```bash
+git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
+cd docker-zerotier-planet-2.0
+sudo ./scripts/install-1panel-app.sh
+```
+
+不想 clone 也可以用 Release 附件：
+
+```bash
+sudo tar -xzf 1panel-app-v2.1.0.tar.gz -C /opt/1panel/resource/apps/local
+```
+
+然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
+
+| 字段 | 说明 |
+| --- | --- |
+| 公网 IPv4 | planet 对外公布的地址，**必填**（NAT 后填端口映射后的公网地址） |
+| 公网 IPv6 | 可选 |
+| 时区 | 默认 `Asia/Shanghai` |
+| ZeroTier 端口 | 宿主机 UDP 端口，默认 9994 |
+| 管理界面端口 | 宿主机 TCP 端口，默认 3443（HTTPS） |
+| 文件服务器端口 | 宿主机 TCP 端口，默认 3000（HTTPS，需密钥） |
+
+应用数据放在 1Panel 应用目录下的 `data/`（`config`、`dist`、`one` 三个子目录），
+升级应用容器不会丢数据。首次登录密码：
+
+```bash
+# 在面板里打开应用「终端」
+cat /app/config/admin-password
+# 或在宿主机上查找（路径随 1Panel 安装位置不同）
+sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
+```
+
+> 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
+> 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
+> 应用包里的镜像 tag 固定为 `v2.1.0`（不用 `latest`），这样面板才能正确识别版本更新。
 
 ### 首次登录
 
@@ -317,8 +382,8 @@ node tests/ztncui-views.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.0.0 -m "docker-zerotier-planet 2.0"
-git push origin v2.0.0
+git tag -a v2.1.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.1.0
 ```
 
 推送标签后，Actions 会依次执行：
@@ -330,30 +395,32 @@ git push origin v2.0.0
    控制器 UI 走 HTTPS 且返回登录页、文件服务器未授权返回 401、`?key=` 默认失效、
    路径穿越返回 404、随机密码写在 0600 文件且没有泄漏进容器日志；
 4. **release** —— 生成 `SHA256SUMS` 与 `SOURCE`（记录两个上游的精确 commit），
-   创建 GitHub Release 并附加归档文件，同时把两个架构合成一个多架构 manifest 推到 GHCR。
+   打包 1Panel 应用（`1panel-app-<版本>.tar.gz`），创建 GitHub Release 并附加归档文件，
+   同时把两个架构合成一个多架构 manifest 推到 GHCR。
 
 Release 附件：
 
 ```text
-docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz    # docker save 归档（gzip）
-docker-zerotier-planet-2.0-v2.0.0-arm64.tar.gz    # 仅当勾选 include_arm64
+docker-zerotier-planet-2.0-v2.1.0-amd64.tar.gz    # docker save 归档（gzip）
+docker-zerotier-planet-2.0-v2.1.0-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-v2.1.0.tar.gz                          # 1Panel 本地应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-v2.0.0.txt                            # 加载与运行说明
+LOAD-amd64-v2.1.0.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz
+docker load < docker-zerotier-planet-2.0-v2.1.0-amd64.tar.gz
 docker images | grep docker-zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0`，可以直接用
+归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`，可以直接用
 `docker-compose.yml` 里的 `image:` 字段引用。镜像也会发布到 GHCR：
 
 ```text
-ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
 ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
 ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
 ```
@@ -371,9 +438,9 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 拉取并部署：
 
 ```bash
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -382,7 +449,7 @@ sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 
