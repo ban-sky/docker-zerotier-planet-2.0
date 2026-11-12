@@ -1,6 +1,6 @@
 services:
   zerotier-planet:
-    image: docker-zerotier-planet:latest
+    image: docker-zerotier-planet-2.0:latest
     build:
       context: .
       args:

@@ -286,7 +286,7 @@ fi
 if [ "$BUILD" -eq 1 ]; then
   need docker
   note ""
-  note "Building image docker-zerotier-planet:upgrade-test ..."
+  note "Building image docker-zerotier-planet-2.0:upgrade-test ..."
   case "$BUILD_JOBS" in ''|*[!0-9]*) die "BUILD_JOBS must be a positive integer" ;; esac
   [ "$BUILD_JOBS" -ge 1 ] || die "BUILD_JOBS must be at least 1"
   if ! (cd "$ROOT_DIR" && docker build \
@@ -294,7 +294,7 @@ if [ "$BUILD" -eq 1 ]; then
       --build-arg "GH_MIRROR=$GH_MIRROR" \
       --build-arg "GH_FALLBACK=$GH_FALLBACK" \
       --build-arg "BUILD_JOBS=$BUILD_JOBS" \
-      -t docker-zerotier-planet:upgrade-test .); then
+      -t docker-zerotier-planet-2.0:upgrade-test .); then
     restore
     die "docker build failed; Dockerfile restored"
   fi

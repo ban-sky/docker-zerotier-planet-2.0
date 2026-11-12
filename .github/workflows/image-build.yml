@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/ztncui-modern-ui
     paths:
       - Dockerfile
       - patch/**
@@ -35,11 +34,14 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  ZT_VERSION: "1.16.2"
+  ZT_COMMIT: "fc5c3ec22090b5b2a0f274e863651fe9ca489bf4"
+  ZTNCUI_COMMIT: "1b2284864de48d2dcae22582fff122fe24909c3d"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
 
     steps:
       - name: Check out repository
@@ -68,7 +70,6 @@ jobs:
             type=sha,prefix=sha-
             type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=ztncui-modern-ui,enable=${{ github.ref == 'refs/heads/feature/ztncui-modern-ui' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -79,9 +80,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            ZT_VERSION=1.16.2
-            ZT_COMMIT=fc5c3ec22090b5b2a0f274e863651fe9ca489bf4
-            ZTNCUI_COMMIT=1b2284864de48d2dcae22582fff122fe24909c3d
+            ZT_VERSION=${{ env.ZT_VERSION }}
+            ZT_COMMIT=${{ env.ZT_COMMIT }}
+            ZTNCUI_COMMIT=${{ env.ZTNCUI_COMMIT }}
             APT_MIRROR=http://deb.debian.org
             GH_MIRROR=https://github.com
             GH_FALLBACK=https://github.com

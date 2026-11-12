@@ -170,7 +170,7 @@ ARG APT_MIRROR=http://mirrors.ustc.edu.cn
 
 LABEL org.opencontainers.image.title="docker-zerotier-planet" \
       org.opencontainers.image.description="Self-hosted ZeroTier planet and controller with TLS and hardened defaults" \
-      org.opencontainers.image.source="https://github.com/ban-sky/docker-zerotier-planet" \
+      org.opencontainers.image.source="https://github.com/ban-sky/docker-zerotier-planet-2.0" \
       org.opencontainers.image.licenses="GPL-3.0-only AND MPL-2.0 AND LicenseRef-ZeroTier-Source-Available"
 
 ENV DEBIAN_FRONTEND=noninteractive

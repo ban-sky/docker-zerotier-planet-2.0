@@ -1,7 +1,7 @@
-# docker-zerotier-planet (hardened)
+# docker-zerotier-planet 2.0 (hardened)
 
 Run your own **ZeroTier planet** and **network controller (ztncui)** in Docker.
-This is a maintained fork of
+This is the **2.0** maintained fork of
 [xubiaolin/docker-zerotier-planet](https://github.com/xubiaolin/docker-zerotier-planet),
 upgraded to **ZeroTier One 1.16.2** (verified 2026-11-06: this is still the latest
 upstream stable release) with fixes for the security issues reported against the
@@ -70,7 +70,7 @@ upstream project.
 ### Option 1: script
 
 ```bash
-git clone https://github.com/ban-sky/docker-zerotier-planet.git
+git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
 cd docker-zerotier-planet
 ./deploy.sh
 ```
@@ -83,7 +83,7 @@ directory.
 ### Option 2: Compose
 
 ```bash
-git clone https://github.com/ban-sky/docker-zerotier-planet.git
+git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
 cd docker-zerotier-planet
 cat > .env <<'EOF'
 IP_ADDR4=203.0.113.10
@@ -291,7 +291,7 @@ the native architecture, or build each platform on a separate machine.
 ./build.sh
 
 # multi-arch build and push (log in to the registry first)
-PUSH=1 IMAGE=ghcr.io/<you>/docker-zerotier-planet:latest ./build.sh
+PUSH=1 IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest ./build.sh
 
 # tests
 cd patch/ztncui && npm ci --omit=dev --ignore-scripts
@@ -303,31 +303,70 @@ node tests/ztncui-views.test.js
 `tests/http-server.test.sh` contains file-server security regression tests, and
 `tests/ztncui-views.test.js` compiles every Pug view.
 
-### Building with GitHub Actions
+### Building and releasing with GitHub Actions
 
-`ci/image-build.yml` is the GitHub Actions workflow template. GitHub requires the
-additional `workflow` scope for an OAuth App to create files under
-`.github/workflows/`, so add it once through the web UI:
+Two workflows ship with the repository (both under `.github/workflows/`, committed
+normally — nothing has to be pasted into the web UI):
 
-1. Open the repository and choose **Add file → Create new file**.
-2. Use the path `.github/workflows/image-build.yml`.
-3. Paste the contents of `ci/image-build.yml` and commit it to
-   `feature/ztncui-modern-ui`.
-4. Open **Actions → Build container image**; the push triggers a build, or start
-   one with **Run workflow**.
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `image-build.yml` | push to `main`, changes to `Dockerfile`/`patch/`, or manual | builds the image and pushes it to GHCR (`latest`, `sha-<commit>`) |
+| `release.yml` | push a `v*` tag, or a manual run with a version | builds, smoke-tests, packages a `docker save` archive and publishes a GitHub Release |
 
-The default build is `linux/amd64`; a manual run can also select amd64+arm64.
-Images are published as:
+#### Publishing a version
 
-```text
-ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui
-ghcr.io/ban-sky/docker-zerotier-planet:sha-<commit>
+```bash
+git tag -a v2.0.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.0.0
 ```
 
-`main` publishes `:latest`; Git tags publish the tag name. The GHCR package is
-private after the first build. To pull it on the server, either make the package
-public (GitHub → Packages → Package settings → Visibility) or log in with a PAT
-that has `read:packages`:
+The tag runs four jobs:
+
+1. **prepare** — normalises the version string.
+2. **build** — builds `linux/amd64` on a native runner; when `include_arm64` is
+   selected it also builds `linux/arm64` on `ubuntu-24.04-arm` (native ARM, no
+   emulation).
+3. **smoke** — actually boots the amd64 image and asserts: the planet and moon are
+   generated (upstream issue #213), the controller UI answers over HTTPS with the
+   login form, the file server returns 401 without a key, the legacy `?key=`
+   parameter stays disabled, path traversal returns 404, and the random admin
+   password lives in a 0600 file without ever appearing in the container log.
+4. **release** — writes `SHA256SUMS` and `SOURCE` (the exact upstream commits),
+   creates the GitHub Release with the archives attached, and assembles a
+   multi-arch manifest in GHCR.
+
+Release assets:
+
+```text
+docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz    # gzipped docker save archive
+docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz.sha256
+docker-zerotier-planet-2.0-v2.0.0-arm64.tar.gz    # only when include_arm64 is set
+SHA256SUMS
+SOURCE
+LOAD-amd64-v2.0.0.txt                            # load and run instructions
+```
+
+On a server, use the archive — no compiler and no registry login required:
+
+```bash
+docker load < docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz
+docker images | grep docker-zerotier-planet-2.0
+```
+
+The archive restores the tag
+`ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0`, so the `image:` field in
+`docker-compose.yml` can point straight at it. The image is also published to
+GHCR:
+
+```text
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
+```
+
+The GHCR package is private after the first build. To pull it on the server,
+either make the package public (GitHub → Packages → Package settings →
+Visibility) or log in with a PAT that has `read:packages`:
 
 ```bash
 echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
@@ -336,22 +375,22 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 Pull and deploy without compiling on the server:
 
 ```bash
-docker pull ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
-Migrating an old deployment directly from the workflow image:
+Migrating an old deployment directly from a workflow image:
 
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 
-The workflow runs on GitHub-hosted runners; the server only pulls and runs the
+The workflows run on GitHub-hosted runners; the server only loads or pulls the
 image.
 
 ### Upgrading upstream versions

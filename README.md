@@ -1,8 +1,8 @@
-# docker-zerotier-planet（安全加固版）
+# docker-zerotier-planet 2.0（安全加固版）
 
 在 Docker 中自建 **ZeroTier 行星服务器（planet）** 和 **网络控制器（ztncui）**。
 本项目是 [xubiaolin/docker-zerotier-planet](https://github.com/xubiaolin/docker-zerotier-planet)
-的维护分支，已升级到 **ZeroTier One 1.16.2**（截至 2026-11-06 核查，上游最新稳定版仍是 1.16.2），并针对上游 issue 中的安全问题做了系统性加固。
+的 **2.0** 维护分支，已升级到 **ZeroTier One 1.16.2**（截至 2026-11-06 核查，上游最新稳定版仍是 1.16.2），并针对上游 issue 中的安全问题做了系统性加固。
 
 > **许可证提醒（重要）**
 > ZeroTier 1.16 起把 controller 移到了 `nonfree/`，采用 *ZeroTier SOURCE-AVAILABLE
@@ -65,7 +65,7 @@
 ### 方式一：脚本
 
 ```bash
-git clone https://github.com/ban-sky/docker-zerotier-planet.git
+git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
 cd docker-zerotier-planet
 ./deploy.sh
 ```
@@ -76,7 +76,7 @@ cd docker-zerotier-planet
 ### 方式二：Compose
 
 ```bash
-git clone https://github.com/ban-sky/docker-zerotier-planet.git
+git clone https://github.com/ban-sky/docker-zerotier-planet-2.0.git
 cd docker-zerotier-planet
 cat > .env <<'EOF'
 IP_ADDR4=203.0.113.10
@@ -271,7 +271,7 @@ BUILD_JOBS=2 ./build.sh
 ./build.sh
 
 # 多架构构建并推送（需先 docker login）
-PUSH=1 IMAGE=ghcr.io/<你>/docker-zerotier-planet:latest ./build.sh
+PUSH=1 IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest ./build.sh
 
 # 测试
 cd patch/ztncui && npm ci --omit=dev --ignore-scripts
@@ -283,26 +283,61 @@ node tests/ztncui-views.test.js
 仓库提供 `tests/http-server.test.sh`（文件服务器安全回归）与 `tests/ztncui-views.test.js`
 （全部 Pug 视图编译）。
 
-### GitHub Actions 构建镜像
+### GitHub Actions 构建与发布
 
-`ci/image-build.yml` 是 GitHub Actions 工作流模板。由于 GitHub 对 OAuth App 推送
-`.github/workflows/` 下的文件要求额外的 `workflow` scope，首次需要在网页手动创建：
+仓库内置两个工作流（都在 `.github/workflows/`，随仓库提交，无需手工创建）：
 
-1. 打开仓库 **Add file → Create new file**；
-2. 文件名填 `.github/workflows/image-build.yml`；
-3. 把 `ci/image-build.yml` 的内容粘贴进去，提交到 `feature/ztncui-modern-ui`；
-4. 打开 **Actions → Build container image**，工作流会自动运行，也可以手动
-   **Run workflow**。
+| 工作流 | 触发条件 | 作用 |
+| --- | --- | --- |
+| `image-build.yml` | 推送到 `main`、改动 `Dockerfile`/`patch/`，或手动运行 | 构建镜像推送到 GHCR（`latest`、`sha-<commit>`） |
+| `release.yml` | 推送 `v*` 标签，或手动运行并填写版本号 | 构建镜像 + 冒烟测试 + 打包 `docker save` 归档 + 发布到 Releases |
 
-工作流默认只构建 `linux/amd64`；手动运行时可选 amd64+arm64。推送后镜像位于：
+#### 发布一个版本
 
-```text
-ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui
-ghcr.io/ban-sky/docker-zerotier-planet:sha-<commit>
+```bash
+git tag -a v2.0.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.0.0
 ```
 
-`main` 分支构建 `:latest`，Git tag 构建同名 tag。首次构建后 GHCR 包默认是私有的；
-要在服务器上直接拉取，二选一：
+推送标签后，Actions 会依次执行：
+
+1. **prepare** —— 规范化版本号；
+2. **build** —— 在原生 runner 上构建 `linux/amd64`；勾选 `include_arm64` 时同时在
+   `ubuntu-24.04-arm` 上构建 `linux/arm64`（原生 ARM，不走模拟）；
+3. **smoke** —— 真正启动 amd64 镜像并验证：planet 与 moon 已生成（对应 issue #213）、
+   控制器 UI 走 HTTPS 且返回登录页、文件服务器未授权返回 401、`?key=` 默认失效、
+   路径穿越返回 404、随机密码写在 0600 文件且没有泄漏进容器日志；
+4. **release** —— 生成 `SHA256SUMS` 与 `SOURCE`（记录两个上游的精确 commit），
+   创建 GitHub Release 并附加归档文件，同时把两个架构合成一个多架构 manifest 推到 GHCR。
+
+Release 附件：
+
+```text
+docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz    # docker save 归档（gzip）
+docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz.sha256
+docker-zerotier-planet-2.0-v2.0.0-arm64.tar.gz    # 仅当勾选 include_arm64
+SHA256SUMS
+SOURCE
+LOAD-amd64-v2.0.0.txt                            # 加载与运行说明
+```
+
+在服务器上使用归档（无需自己编译、无需 registry 登录）：
+
+```bash
+docker load < docker-zerotier-planet-2.0-v2.0.0-amd64.tar.gz
+docker images | grep docker-zerotier-planet-2.0
+```
+
+归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0`，可以直接用
+`docker-compose.yml` 里的 `image:` 字段引用。镜像也会发布到 GHCR：
+
+```text
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:latest
+ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
+```
+
+GHCR 包默认私有；要在服务器上直接 `docker pull`，二选一：
 
 ```bash
 # 方式 A：把 package 设为 public（GitHub → Packages → Package settings → Visibility）
@@ -314,9 +349,9 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 拉取并部署：
 
 ```bash
-docker pull ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -325,11 +360,11 @@ sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet:ztncui-modern-ui \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.0.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 
-工作流只在 GitHub 托管 runner 上编译；服务器只负责 `docker pull` 和运行。
+工作流只在 GitHub 托管 runner 上编译；服务器只负责 `docker load`/`docker pull` 和运行。
 
 ### 升级上游版本
 

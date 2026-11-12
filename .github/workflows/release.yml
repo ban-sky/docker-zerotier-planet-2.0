@@ -1,0 +1,475 @@
+name: Release
+
+# Builds the container image, smoke-tests it, packages it as a loadable
+# `docker save` archive and publishes everything to a GitHub Release.
+#
+# Trigger it by pushing a version tag (v2.0.0, v2.0.1, ...) or manually with
+# "Run workflow". The manual run can also produce an arm64 archive; that build
+# compiles ZeroTier under QEMU emulation and is considerably slower.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag/version for the release (for example v2.0.0)
+        required: true
+        default: v2.0.0
+      include_arm64:
+        description: Also build and attach a linux/arm64 archive (slow, emulated)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  ZT_VERSION: "1.16.2"
+  ZT_COMMIT: "fc5c3ec22090b5b2a0f274e863651fe9ca489bf4"
+  ZTNCUI_COMMIT: "1b2284864de48d2dcae22582fff122fe24909c3d"
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Resolve the release version once so every later job agrees on it.
+  # -------------------------------------------------------------------------
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image: ${{ steps.version.outputs.image }}
+    steps:
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${INPUT_TAG}"
+          else
+            version="${GITHUB_REF_NAME}"
+          fi
+          case "$version" in
+            v[0-9]*) ;;
+            *) echo "::error::version must start with 'v' (got '$version')"; exit 1 ;;
+          esac
+          image="${REGISTRY}/${IMAGE_NAME}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version as $image"
+
+  # -------------------------------------------------------------------------
+  # Build one architecture and export it as a `docker save` archive.
+  # -------------------------------------------------------------------------
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    steps:
+      - name: Skip arm64 unless requested
+        id: gate
+        env:
+          ARCH: ${{ matrix.arch }}
+          INCLUDE_ARM64: ${{ inputs.include_arm64 }}
+        run: |
+          set -euo pipefail
+          if [ "$ARCH" = "arm64" ] && [ "$INCLUDE_ARM64" != "true" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "arm64 build not requested; skipping"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        if: steps.gate.outputs.run == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.gate.outputs.run == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image for ${{ matrix.platform }}
+        if: steps.gate.outputs.run == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            ZT_VERSION=${{ env.ZT_VERSION }}
+            ZT_COMMIT=${{ env.ZT_COMMIT }}
+            ZTNCUI_COMMIT=${{ env.ZTNCUI_COMMIT }}
+            APT_MIRROR=http://deb.debian.org
+            GH_MIRROR=https://github.com
+            GH_FALLBACK=https://github.com
+            BUILD_JOBS=4
+          cache-from: type=gha,scope=release-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.arch }}
+          provenance: false
+
+      - name: Package the image as a docker-load archive
+        if: steps.gate.outputs.run == 'true'
+        id: package
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          # docker save keeps the local tag; use the plain version so a user can
+          # `docker load` and immediately run `docker run <image>:<version>`.
+          local_tag="${IMAGE}:${VERSION}"
+          docker tag "${IMAGE}:${VERSION}-${ARCH}" "$local_tag"
+          tarball="docker-zerotier-planet-2.0-${VERSION}-${ARCH}.tar.gz"
+          docker save "$local_tag" | gzip -6 > "$tarball"
+          ls -lh "$tarball"
+          sha256sum "$tarball" > "$tarball.sha256"
+          cat "$tarball.sha256"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+      - name: Push the arch image to GHCR
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker push "${IMAGE}:${VERSION}-${ARCH}"
+
+      - name: Write archive instructions
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          cat > "LOAD-${ARCH}-${VERSION}.txt" <<EOF
+          docker-zerotier-planet 2.0 ($VERSION, linux/${ARCH#amd64}, ZeroTier ${ZT_VERSION})
+
+          Load the image:
+            docker load < docker-zerotier-planet-2.0-${VERSION}-${ARCH}.tar.gz
+
+          The archive restores the tag:
+            ${IMAGE}:${VERSION}
+
+          Run it (set IP_ADDR4 to the address your clients can reach):
+            docker run -d --name zerotier-planet --restart unless-stopped \\
+              -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp \\
+              -e IP_ADDR4=203.0.113.10 \\
+              -v "\$PWD/data/config:/app/config" \\
+              -v "\$PWD/data/dist:/app/dist" \\
+              -v "\$PWD/data/one:/var/lib/zerotier-one" \\
+              ${IMAGE}:${VERSION}
+
+          The initial admin password is printed by:
+            docker exec zerotier-planet cat /app/config/admin-password
+          EOF
+
+      - name: Upload packaged image
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.arch }}
+          path: |
+            docker-zerotier-planet-2.0-*.tar.gz
+            docker-zerotier-planet-2.0-*.tar.gz.sha256
+            LOAD-*.txt
+          retention-days: 7
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------------
+  # Boot the built amd64 image and verify the things the issues complained
+  # about: the planet actually gets generated (upstream #213), the controller
+  # UI answers with TLS, the file server is authenticated and the file server
+  # cannot be used for path traversal (#215).
+  # -------------------------------------------------------------------------
+  smoke:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download the amd64 archive
+        uses: actions/download-artifact@v4
+        with:
+          name: image-amd64
+          path: dist
+
+      - name: Load the image
+        run: |
+          set -euo pipefail
+          ls -lh dist
+          docker load < dist/docker-zerotier-planet-2.0-*.tar.gz
+          docker images
+
+      - name: Start the container
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/zt/data/config /tmp/zt/data/dist /tmp/zt/data/one
+          docker run -d --name zt-smoke \
+            -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp \
+            -e IP_ADDR4=127.0.0.1 \
+            -e IP_ADDR6= \
+            -v /tmp/zt/data/config:/app/config \
+            -v /tmp/zt/data/dist:/app/dist \
+            -v /tmp/zt/data/one:/var/lib/zerotier-one \
+            "${IMAGE}:${VERSION}"
+          for i in $(seq 1 90); do
+            if docker exec zt-smoke /usr/sbin/zerotier-cli info >/dev/null 2>&1; then
+              echo "zerotier-one is up after ${i}s"; break
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' zt-smoke)" != "true" ]; then
+              echo "::error::container exited during startup"; docker logs zt-smoke; exit 1
+            fi
+            sleep 2
+          done
+          docker ps
+
+      - name: Verify the planet and moon were generated
+        run: |
+          set -euo pipefail
+          docker exec zt-smoke test -s /app/dist/planet
+          docker exec zt-smoke ls -l /app/dist
+          # a private planet is a signed world; it must not be the stock size 0
+          size=$(docker exec zt-smoke stat -c %s /app/dist/planet)
+          echo "planet size: $size"
+          [ "$size" -gt 100 ]
+          docker exec zt-smoke ls /app/dist/*.moon
+          docker exec zt-smoke test -s /var/lib/zerotier-one/identity.public
+          docker exec zt-smoke test -s /var/lib/zerotier-one/identity.secret
+
+      - name: Verify no default credentials and no secrets in the log
+        run: |
+          set -euo pipefail
+          docker exec zt-smoke test -s /app/config/admin-password
+          docker exec zt-smoke stat -c '%a' /app/config/admin-password | grep -qx 600
+          # the admin password must never be echoed into the container log
+          if docker logs zt-smoke 2>&1 | grep -qF "$(docker exec zt-smoke cat /app/config/admin-password)"; then
+            echo "::error::the generated admin password leaked into the log"; exit 1
+          fi
+          # the controller token must never be echoed either
+          if docker logs zt-smoke 2>&1 | grep -qxF "$(docker exec zt-smoke cat /var/lib/zerotier-one/authtoken.secret)"; then
+            echo "::error::the controller token leaked into the log"; exit 1
+          fi
+          docker logs zt-smoke
+
+      - name: Verify the controller UI answers over TLS
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            code=$(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:3443/ || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          echo "UI status: $code"
+          [ "$code" = "200" ]
+          # plain HTTP must not be served on the API port when TLS is on
+          curl -ks https://127.0.0.1:3443/login | grep -qi '<form'
+
+      - name: Verify the file server requires authentication
+        run: |
+          set -euo pipefail
+          code=$(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:3000/planet)
+          echo "unauthenticated planet: $code"
+          [ "$code" = "401" ]
+          code=$(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:3000/healthz)
+          [ "$code" = "200" ]
+          key=$(docker exec zt-smoke cat /app/config/file_server.key)
+          curl -ksf -H "Authorization: Bearer $key" https://127.0.0.1:3000/planet -o /tmp/planet
+          cmp /tmp/planet <(docker exec zt-smoke cat /app/dist/planet)
+          # the legacy query-string key must stay disabled by default
+          code=$(curl -ks -o /dev/null -w '%{http_code}' "https://127.0.0.1:3000/planet?key=$key")
+          echo "query-string key: $code"
+          [ "$code" = "401" ]
+
+      - name: Verify the file server rejects path traversal
+        run: |
+          set -euo pipefail
+          key=$(docker exec zt-smoke cat /app/config/file_server.key)
+          for target in "/../etc/passwd" "/%2e%2e/%2e%2e/etc/passwd" "/..%2f..%2fetc%2fpasswd" "/zzz.moon"; do
+            code=$(curl -ks -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $key" "https://127.0.0.1:3000${target}")
+            echo "$target -> $code"
+            [ "$code" = "404" ] || { echo "::error::unexpected status for $target"; exit 1; }
+          done
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          docker logs zt-smoke 2>&1 || true
+          docker exec zt-smoke sh -c 'cat /app/config/*.key 2>/dev/null; ls -la /app/config /app/dist' || true
+
+      - name: Stop the container
+        if: always()
+        run: docker rm -f zt-smoke || true
+
+  # -------------------------------------------------------------------------
+  # Publish: a multi-arch manifest in GHCR plus the archives on the Release.
+  # -------------------------------------------------------------------------
+  release:
+    needs: [prepare, build, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download packaged images
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -lh dist
+
+      - name: Combine checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          rm -f SHA256SUMS
+          for f in *.tar.gz; do sha256sum "$f" >> SHA256SUMS; done
+          cat SHA256SUMS
+
+      - name: Write the release notes
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          {
+            echo "# docker-zerotier-planet 2.0 — ${VERSION}"
+            echo
+            echo "Self-hosted ZeroTier planet + network controller, based on"
+            echo "[xubiaolin/docker-zerotier-planet](https://github.com/xubiaolin/docker-zerotier-planet)."
+            echo
+            echo "## Versions"
+            echo
+            echo "| Component | Version |"
+            echo "| --- | --- |"
+            echo "| ZeroTier One | ${ZT_VERSION} |"
+            echo "| ztncui (pinned commit) | \`${ZTNCUI_COMMIT}\` |"
+            echo "| Base images | debian:bookworm-slim, node:24-bookworm-slim (digest-pinned) |"
+            echo
+            echo "## Assets"
+            echo
+            echo "| File | Description |"
+            echo "| --- | --- |"
+            for f in dist/*.tar.gz; do
+              echo "| \`$(basename "$f")\` | \`docker save\` archive, load with \`docker load\` |"
+            done
+            echo "| \`SHA256SUMS\` | Checksums for every archive |"
+            echo "| \`SOURCE\` | Exact upstream commits and build arguments |"
+            echo
+            echo "## Load and run"
+            echo
+            echo '```bash'
+            echo "docker load < docker-zerotier-planet-2.0-${VERSION}-amd64.tar.gz"
+            echo "docker run -d --name zerotier-planet --restart unless-stopped \\"
+            echo "  -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp \\"
+            echo "  -e IP_ADDR4=203.0.113.10 \\"
+            echo "  -v \"\$PWD/data/config:/app/config\" \\"
+            echo "  -v \"\$PWD/data/dist:/app/dist\" \\"
+            echo "  -v \"\$PWD/data/one:/var/lib/zerotier-one\" \\"
+            echo "  ${IMAGE}:${VERSION}"
+            echo '```'
+            echo
+            echo "The initial admin password is in \`/app/config/admin-password\` inside the container;"
+            echo "change it at first login, after which the file is deleted."
+            echo
+            echo "The image is also published to GHCR as \`${IMAGE}:${VERSION}\`."
+          } > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      - name: Write the build provenance file
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "version=${VERSION}"
+            echo "repo=${GITHUB_REPOSITORY}"
+            echo "commit=${GITHUB_SHA}"
+            echo "zerotier_version=${ZT_VERSION}"
+            echo "zerotier_commit=${ZT_COMMIT}"
+            echo "ztncui_commit=${ZTNCUI_COMMIT}"
+            echo "debian_base=debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc"
+            echo "node_base=node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54"
+            echo "built_by=GitHub Actions"
+            echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > dist/SOURCE
+          cat dist/SOURCE
+
+      - name: Create or update the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: docker-zerotier-planet 2.0 ${{ needs.prepare.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/SOURCE
+            dist/LOAD-*.txt
+
+      - name: Publish the multi-arch image to GHCR
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+          # buildx imagetools assembles a manifest from the per-arch tags that
+          # the build job already pushed, so nothing is compiled twice.
+          tags=""
+          if docker manifest inspect "${IMAGE}:${VERSION}-amd64" >/dev/null 2>&1; then
+            tags="${IMAGE}:${VERSION}-amd64"
+          fi
+          if docker manifest inspect "${IMAGE}:${VERSION}-arm64" >/dev/null 2>&1; then
+            tags="$tags ${IMAGE}:${VERSION}-arm64"
+          fi
+          [ -n "$tags" ] || { echo "::error::no per-arch images found in GHCR"; exit 1; }
+          echo "creating manifest for: $tags"
+          docker buildx imagetools create -t "${IMAGE}:${VERSION}" -t "${IMAGE}:latest" $tags
+          docker buildx imagetools inspect "${IMAGE}:${VERSION}"

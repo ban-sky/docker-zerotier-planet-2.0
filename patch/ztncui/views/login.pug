@@ -8,7 +8,7 @@ extends login_layout
 block login_content
   p.eyebrow Admin access
   h1.auth-title Sign in
-  p.auth-subtitle Use the admin password shown in the container logs or the password file on the host.
+  p.auth-subtitle Use the one-time admin password from /app/config/admin-password inside the container. You must set a new password after the first sign-in.
 
   if message
     .alert.alert-info= message

@@ -13,7 +13,7 @@
 set -Eeuo pipefail
 
 CONTAINER_NAME="${CONTAINER_NAME:-myztplanet}"
-IMAGE="${IMAGE:-docker-zerotier-planet:latest}"
+IMAGE="${IMAGE:-docker-zerotier-planet-2.0:latest}"
 DATA_ROOT="${DATA_ROOT:-$(pwd)/data/zerotier}"
 DOCKER="${DOCKER:-docker}"
 APT_MIRROR="${APT_MIRROR:-http://mirrors.ustc.edu.cn}"
@@ -35,7 +35,7 @@ Usage: ./deploy.sh [options]
 
 Options:
   --name NAME        container name (default: myztplanet)
-  --image IMAGE      image reference (default: docker-zerotier-planet:latest; built if missing)
+  --image IMAGE      image reference (default: docker-zerotier-planet-2.0:latest; built if missing)
   --pull             always docker pull IMAGE first (for GHCR workflow images)
   --data DIR         data root (default: ./data/zerotier)
   --zt-port PORT     host UDP port for ZeroTier (default: 9994)

@@ -9,7 +9,7 @@
 # GPLv3 - see LICENSE.
 set -Eeuo pipefail
 
-IMAGE="${IMAGE:-docker-zerotier-planet:latest}"
+IMAGE="${IMAGE:-docker-zerotier-planet-2.0:latest}"
 ZT_VERSION="${ZT_VERSION:-1.16.2}"
 ZT_COMMIT="${ZT_COMMIT:-}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
