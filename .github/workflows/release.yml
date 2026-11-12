@@ -343,6 +343,10 @@ jobs:
       - name: Download packaged images
         uses: actions/download-artifact@v4
         with:
+          # Only the archives this workflow uploaded. Without the pattern the
+          # action also tries to fetch the buildx layer-cache entries, which are
+          # not downloadable artifacts and make the step fail after 5 retries.
+          pattern: image-*
           path: dist
           merge-multiple: true
 
