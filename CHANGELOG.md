@@ -2,6 +2,14 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [未发布]
+
+### 新增
+
+- 可选的 **Docker Hub 镜像**：配置 `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` 两个
+  repository secret 后，`image-build` 与 `release` 会把同名 tag（含 `latest`）以
+  多架构 manifest 镜像到 Docker Hub；未配置时自动跳过，行为与之前一致。
+
 ## [2.1.0] - 2026-11-12
 
 ### 新增

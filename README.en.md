@@ -463,6 +463,26 @@ so `docker pull` works without logging in. If a fork is private the package is
 private too; then either make the package public (GitHub → Packages → Package
 settings → Visibility) or log in with a PAT that has `read:packages`:
 
+#### Publishing to Docker Hub (optional)
+
+Only GHCR is used by default. To publish to Docker Hub as well, configure three things:
+
+1. Create the repository `docker-zerotier-planet-2.0` on Docker Hub (public or private);
+2. Docker Hub → **Account settings → Security → New access token**, scope **Read & Write**;
+3. In this repository: **Settings → Secrets and variables → Actions**, add two secrets:
+   - `DOCKERHUB_USERNAME` — your Docker Hub username
+   - `DOCKERHUB_TOKEN` — the access token from step 2 (**not** your password)
+
+Both workflows then mirror the same tags (`v2.1.0`, `latest`, `sha-<commit>`) to Docker Hub
+as multi-arch manifests. Without the secrets those steps are skipped and only GHCR is used.
+
+```bash
+docker pull docker.io/<docker-hub-user>/docker-zerotier-planet-2.0:v2.1.0
+```
+
+> Private repositories need `docker login` first. Docker Hub rate-limits anonymous pulls
+> (100 per 6 hours, 200 when authenticated).
+
 ```bash
 echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 ```

@@ -426,6 +426,26 @@ ghcr.io/ban-sky/docker-zerotier-planet-2.0:sha-<commit>
 ```
 
 GHCR 包继承仓库可见性，本仓库为 public，因此无需登录即可 `docker pull`。
+
+#### 推送到 Docker Hub（可选）
+
+默认只推 GHCR。若要同时发布到 Docker Hub，配置三项即可：
+
+1. 在 Docker Hub 创建仓库 `docker-zerotier-planet-2.0`（公开或私有都可以）；
+2. Docker Hub → **Account settings → Security → New access token**，权限选 **Read & Write**；
+3. 本仓库 **Settings → Secrets and variables → Actions** 新增两个 repository secret：
+   - `DOCKERHUB_USERNAME`：Docker Hub 用户名
+   - `DOCKERHUB_TOKEN`：上一步生成的 access token（**不要**用登录密码）
+
+配置后，`image-build` 与 `release` 都会把同名 tag（`v2.1.0`、`latest`、`sha-<commit>`）
+以多架构 manifest 的形式镜像到 Docker Hub；没有配置时这两步自动跳过，不影响 GHCR。
+
+```bash
+docker pull docker.io/<DockerHub 用户名>/docker-zerotier-planet-2.0:v2.1.0
+```
+
+> 私有仓库需要先 `docker login`；Docker Hub 免费账号有拉取限流（匿名 100 次/6 小时，
+> 登录后 200 次/6 小时）。
 若你 fork 后把仓库改成私有，包也会变成私有，此时二选一：
 
 ```bash

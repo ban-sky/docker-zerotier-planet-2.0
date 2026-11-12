@@ -339,6 +339,11 @@ jobs:
     needs: [prepare, build, smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Optional Docker Hub mirror; both steps below are skipped when the
+      # DOCKERHUB_* repository secrets are not configured.
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       # Needed for 1panel/apps, which is packaged into a release asset below.
       - name: Checkout
@@ -500,3 +505,20 @@ jobs:
           echo "creating manifest for: $tags"
           docker buildx imagetools create -t "${IMAGE}:${VERSION}" -t "${IMAGE}:latest" $tags
           docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+
+      # Optional: publish the same multi-arch image on Docker Hub.
+      # See .github/workflows/image-build.yml for the one-off setup
+      # (repository + DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets).
+      - name: Mirror the release to Docker Hub
+        if: env.DOCKERHUB_TOKEN != ''
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          echo "${DOCKERHUB_TOKEN}" | docker login docker.io -u "${DOCKERHUB_USERNAME}" --password-stdin
+          dst="docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0"
+          for tag in "${VERSION}" latest; do
+            docker buildx imagetools create -t "${dst}:${tag}" "${IMAGE}:${tag}"
+          done
+          docker buildx imagetools inspect "${dst}:${VERSION}"

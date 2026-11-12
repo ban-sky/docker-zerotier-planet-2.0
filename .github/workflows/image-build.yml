@@ -42,6 +42,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    env:
+      # Optional Docker Hub mirror. Configure the repository secrets
+      # DOCKERHUB_USERNAME and DOCKERHUB_TOKEN to enable it; when they are
+      # absent the two steps below are skipped and only GHCR is used.
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - name: Check out repository
@@ -90,3 +96,37 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      # ---------------------------------------------------------------------
+      # Optional: mirror the same tags to Docker Hub.
+      #
+      # Setup (one-off):
+      #   1. Create the repository on Docker Hub, e.g. <user>/docker-zerotier-planet-2.0
+      #   2. Docker Hub → Account settings → Security → New access token (Read & Write)
+      #   3. GitHub → Settings → Secrets and variables → Actions:
+      #        DOCKERHUB_USERNAME = your Docker Hub username
+      #        DOCKERHUB_TOKEN    = the access token (never your password)
+      # ---------------------------------------------------------------------
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_TOKEN != '' && github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Mirror tags to Docker Hub
+        if: env.DOCKERHUB_TOKEN != '' && github.event_name != 'pull_request'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          dst="docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0"
+          echo "$TAGS" | while IFS= read -r src; do
+            [ -n "$src" ] || continue
+            tag="${src##*:}"
+            echo "::group::mirror ${tag}"
+            docker buildx imagetools create -t "${dst}:${tag}" "${src}"
+            echo "::endgroup::"
+          done
+          docker buildx imagetools inspect "${dst}:latest" || true
