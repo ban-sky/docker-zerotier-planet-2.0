@@ -4,8 +4,8 @@ name: Release
 # `docker save` archive and publishes everything to a GitHub Release.
 #
 # Trigger it by pushing a version tag (v2.0.0, v2.0.1, ...) or manually with
-# "Run workflow". The manual run can also produce an arm64 archive; that build
-# compiles ZeroTier under QEMU emulation and is considerably slower.
+# "Run workflow". The manual run can also additionally produce an arm64
+# archive; that leg compiles ZeroTier on a native ARM runner.
 
 on:
   push:
@@ -18,7 +18,7 @@ on:
         required: true
         default: v2.0.0
       include_arm64:
-        description: Also build and attach a linux/arm64 archive (slow, emulated)
+        description: Also build and attach a linux/arm64 archive
         type: boolean
         default: false
 
@@ -39,13 +39,14 @@ env:
 
 jobs:
   # -------------------------------------------------------------------------
-  # Resolve the release version once so every later job agrees on it.
+  # Resolve the version and decide which architectures to build.
   # -------------------------------------------------------------------------
   prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       image: ${{ steps.version.outputs.image }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - name: Resolve version
         id: version
@@ -62,10 +63,22 @@ jobs:
             v[0-9]*) ;;
             *) echo "::error::version must start with 'v' (got '$version')"; exit 1 ;;
           esac
-          image="${REGISTRY}/${IMAGE_NAME}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "image=$image" >> "$GITHUB_OUTPUT"
-          echo "Releasing $version as $image"
+          echo "image=${REGISTRY}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version as ${REGISTRY}/${IMAGE_NAME}"
+
+      - name: Choose architectures
+        id: matrix
+        env:
+          INCLUDE_ARM64: ${{ inputs.include_arm64 }}
+        run: |
+          set -euo pipefail
+          entries='{"platform":"linux/amd64","arch":"amd64","runner":"ubuntu-latest"}'
+          if [ "$INCLUDE_ARM64" = "true" ]; then
+            entries="$entries,{\"platform\":\"linux/arm64\",\"arch\":\"arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+          fi
+          echo "matrix={\"include\":[${entries}]}" >> "$GITHUB_OUTPUT"
+          echo "building: ${entries}"
 
   # -------------------------------------------------------------------------
   # Build one architecture and export it as a `docker save` archive.
@@ -74,41 +87,17 @@ jobs:
     needs: prepare
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            arch: amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64
-            arch: arm64
-            runner: ubuntu-24.04-arm
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 240
     steps:
-      - name: Skip arm64 unless requested
-        id: gate
-        env:
-          ARCH: ${{ matrix.arch }}
-          INCLUDE_ARM64: ${{ inputs.include_arm64 }}
-        run: |
-          set -euo pipefail
-          if [ "$ARCH" = "arm64" ] && [ "$INCLUDE_ARM64" != "true" ]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "arm64 build not requested; skipping"
-          else
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Check out repository
-        if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Set up Buildx
-        if: steps.gate.outputs.run == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        if: steps.gate.outputs.run == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -116,7 +105,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build image for ${{ matrix.platform }}
-        if: steps.gate.outputs.run == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -140,8 +128,6 @@ jobs:
           provenance: false
 
       - name: Package the image as a docker-load archive
-        if: steps.gate.outputs.run == 'true'
-        id: package
         env:
           ARCH: ${{ matrix.arch }}
           VERSION: ${{ needs.prepare.outputs.version }}
@@ -157,28 +143,17 @@ jobs:
           ls -lh "$tarball"
           sha256sum "$tarball" > "$tarball.sha256"
           cat "$tarball.sha256"
-          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
-
-      - name: Push the arch image to GHCR
-        if: steps.gate.outputs.run == 'true'
-        env:
-          ARCH: ${{ matrix.arch }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-          IMAGE: ${{ needs.prepare.outputs.image }}
-        run: |
-          set -euo pipefail
-          docker push "${IMAGE}:${VERSION}-${ARCH}"
 
       - name: Write archive instructions
-        if: steps.gate.outputs.run == 'true'
         env:
           ARCH: ${{ matrix.arch }}
           VERSION: ${{ needs.prepare.outputs.version }}
           IMAGE: ${{ needs.prepare.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           set -euo pipefail
           cat > "LOAD-${ARCH}-${VERSION}.txt" <<EOF
-          docker-zerotier-planet 2.0 ($VERSION, linux/${ARCH#amd64}, ZeroTier ${ZT_VERSION})
+          docker-zerotier-planet 2.0 ($VERSION, ${PLATFORM})
 
           Load the image:
             docker load < docker-zerotier-planet-2.0-${VERSION}-${ARCH}.tar.gz
@@ -199,8 +174,20 @@ jobs:
             docker exec zerotier-planet cat /app/config/admin-password
           EOF
 
+      - name: Push the arch image to GHCR
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IMAGE: ${{ needs.prepare.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker push "${IMAGE}:${VERSION}-${ARCH}"
+
+      - name: Remove the local tag
+        if: always()
+        run: docker image rm -f "${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}" || true
+
       - name: Upload packaged image
-        if: steps.gate.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: image-${{ matrix.arch }}
@@ -222,9 +209,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
       - name: Download the amd64 archive
         uses: actions/download-artifact@v4
         with:
@@ -236,7 +220,6 @@ jobs:
           set -euo pipefail
           ls -lh dist
           docker load < dist/docker-zerotier-planet-2.0-*.tar.gz
-          docker images
 
       - name: Start the container
         env:
@@ -244,50 +227,53 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/zt/data/config /tmp/zt/data/dist /tmp/zt/data/one
+          mkdir -p /tmp/zt/config /tmp/zt/dist /tmp/zt/one
           docker run -d --name zt-smoke \
             -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp \
             -e IP_ADDR4=127.0.0.1 \
-            -e IP_ADDR6= \
-            -v /tmp/zt/data/config:/app/config \
-            -v /tmp/zt/data/dist:/app/dist \
-            -v /tmp/zt/data/one:/var/lib/zerotier-one \
+            -v /tmp/zt/config:/app/config \
+            -v /tmp/zt/dist:/app/dist \
+            -v /tmp/zt/one:/var/lib/zerotier-one \
             "${IMAGE}:${VERSION}"
           for i in $(seq 1 90); do
             if docker exec zt-smoke /usr/sbin/zerotier-cli info >/dev/null 2>&1; then
-              echo "zerotier-one is up after ${i}s"; break
+              echo "zerotier-one is up after ${i}s"; exit 0
             fi
             if [ "$(docker inspect -f '{{.State.Running}}' zt-smoke)" != "true" ]; then
               echo "::error::container exited during startup"; docker logs zt-smoke; exit 1
             fi
             sleep 2
           done
-          docker ps
+          echo "::error::zerotier-one did not start in time"; docker logs zt-smoke; exit 1
 
       - name: Verify the planet and moon were generated
         run: |
           set -euo pipefail
-          docker exec zt-smoke test -s /app/dist/planet
           docker exec zt-smoke ls -l /app/dist
-          # a private planet is a signed world; it must not be the stock size 0
           size=$(docker exec zt-smoke stat -c %s /app/dist/planet)
           echo "planet size: $size"
           [ "$size" -gt 100 ]
-          docker exec zt-smoke ls /app/dist/*.moon
+          docker exec zt-smoke sh -c 'ls /app/dist/*.moon'
           docker exec zt-smoke test -s /var/lib/zerotier-one/identity.public
           docker exec zt-smoke test -s /var/lib/zerotier-one/identity.secret
+          # the moon and the planet must be different artefacts
+          docker exec zt-smoke sh -c 'cmp -s /app/dist/planet /app/dist/*.moon && exit 1 || exit 0'
 
       - name: Verify no default credentials and no secrets in the log
         run: |
           set -euo pipefail
           docker exec zt-smoke test -s /app/config/admin-password
           docker exec zt-smoke stat -c '%a' /app/config/admin-password | grep -qx 600
+          password=$(docker exec zt-smoke sh -c "sed -n 's/^password: //p' /app/config/admin-password")
+          echo "generated password length: ${#password}"
+          [ "${#password}" -ge 20 ]
+          [ "$password" != "password" ]
           # the admin password must never be echoed into the container log
-          if docker logs zt-smoke 2>&1 | grep -qF "$(docker exec zt-smoke cat /app/config/admin-password)"; then
+          if docker logs zt-smoke 2>&1 | grep -qF -- "$password"; then
             echo "::error::the generated admin password leaked into the log"; exit 1
           fi
-          # the controller token must never be echoed either
-          if docker logs zt-smoke 2>&1 | grep -qxF "$(docker exec zt-smoke cat /var/lib/zerotier-one/authtoken.secret)"; then
+          token=$(docker exec zt-smoke cat /var/lib/zerotier-one/authtoken.secret)
+          if docker logs zt-smoke 2>&1 | grep -qF -- "$token"; then
             echo "::error::the controller token leaked into the log"; exit 1
           fi
           docker logs zt-smoke
@@ -295,6 +281,7 @@ jobs:
       - name: Verify the controller UI answers over TLS
         run: |
           set -euo pipefail
+          code=""
           for i in $(seq 1 60); do
             code=$(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:3443/ || true)
             [ "$code" = "200" ] && break
@@ -302,8 +289,12 @@ jobs:
           done
           echo "UI status: $code"
           [ "$code" = "200" ]
-          # plain HTTP must not be served on the API port when TLS is on
-          curl -ks https://127.0.0.1:3443/login | grep -qi '<form'
+          # the login form must be served
+          curl -ks https://127.0.0.1:3443/login | grep -qi 'name="password"'
+          # plaintext HTTP must not be exposed on the controller port
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3443/ || true)
+          echo "plaintext on 3443: $code"
+          [ "$code" != "200" ]
 
       - name: Verify the file server requires authentication
         run: |
@@ -314,8 +305,8 @@ jobs:
           code=$(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:3000/healthz)
           [ "$code" = "200" ]
           key=$(docker exec zt-smoke cat /app/config/file_server.key)
-          curl -ksf -H "Authorization: Bearer $key" https://127.0.0.1:3000/planet -o /tmp/planet
-          cmp /tmp/planet <(docker exec zt-smoke cat /app/dist/planet)
+          curl -ksf -H "Authorization: Bearer $key" https://127.0.0.1:3000/planet -o /tmp/planet.download
+          cmp /tmp/planet.download /tmp/zt/dist/planet
           # the legacy query-string key must stay disabled by default
           code=$(curl -ks -o /dev/null -w '%{http_code}' "https://127.0.0.1:3000/planet?key=$key")
           echo "query-string key: $code"
@@ -325,7 +316,7 @@ jobs:
         run: |
           set -euo pipefail
           key=$(docker exec zt-smoke cat /app/config/file_server.key)
-          for target in "/../etc/passwd" "/%2e%2e/%2e%2e/etc/passwd" "/..%2f..%2fetc%2fpasswd" "/zzz.moon"; do
+          for target in "/../etc/passwd" "/%2e%2e/%2e%2e/etc/passwd" "/..%2f..%2fetc%2fpasswd" "/zzz.moon" "/config/admin-password"; do
             code=$(curl -ks -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $key" "https://127.0.0.1:3000${target}")
             echo "$target -> $code"
             [ "$code" = "404" ] || { echo "::error::unexpected status for $target"; exit 1; }
@@ -335,7 +326,7 @@ jobs:
         if: failure()
         run: |
           docker logs zt-smoke 2>&1 || true
-          docker exec zt-smoke sh -c 'cat /app/config/*.key 2>/dev/null; ls -la /app/config /app/dist' || true
+          docker exec zt-smoke sh -c 'ls -la /app/config /app/dist' || true
 
       - name: Stop the container
         if: always()
@@ -349,9 +340,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
       - name: Download packaged images
         uses: actions/download-artifact@v4
         with:
@@ -398,6 +386,7 @@ jobs:
             done
             echo "| \`SHA256SUMS\` | Checksums for every archive |"
             echo "| \`SOURCE\` | Exact upstream commits and build arguments |"
+            echo "| \`LOAD-*.txt\` | Load/run instructions |"
             echo
             echo "## Load and run"
             echo
@@ -460,8 +449,6 @@ jobs:
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
-          # buildx imagetools assembles a manifest from the per-arch tags that
-          # the build job already pushed, so nothing is compiled twice.
           tags=""
           if docker manifest inspect "${IMAGE}:${VERSION}-amd64" >/dev/null 2>&1; then
             tags="${IMAGE}:${VERSION}-amd64"
