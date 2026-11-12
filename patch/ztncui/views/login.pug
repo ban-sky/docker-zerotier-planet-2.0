@@ -6,21 +6,21 @@
 extends login_layout
 
 block login_content
-  p.eyebrow Admin access
-  h1.auth-title Sign in
-  p.auth-subtitle Use the one-time admin password from /app/config/admin-password inside the container. You must set a new password after the first sign-in.
+  p.eyebrow= t('login.eyebrow')
+  h1.auth-title= t('login.title')
+  p.auth-subtitle= t('login.subtitle')
 
   if message
     .alert.alert-info= message
 
   form.form-stack(method='POST', action='')
     .field
-      label(for='username') Username
+      label(for='username')= t('field.username')
       input#username(type='text', name='username', autocomplete='username', placeholder='admin', required, autofocus)
     .field
-      label(for='password') Password
+      label(for='password')= t('field.password')
       input#password(type='password', name='password', autocomplete='current-password', placeholder='••••••••••••', required)
-    button.btn.btn-primary.btn-block(type='submit') Sign in
+    button.btn.btn-primary.btn-block(type='submit')= t('btn.signIn')
 
   p.auth-footnote
-    a(href='/') Back to the planet overview
+    a(href='/')= t('login.backToPlanet')

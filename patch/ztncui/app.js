@@ -15,6 +15,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const helmet = require('helmet');
 const validate = require('./validate');
+const { checkOrigin } = require('./origin');
+const i18n = require('./i18n');
 
 const index = require('./routes/index');
 const users = require('./routes/users');
@@ -126,31 +128,77 @@ app.use((req, res, next) => {
   next();
 });
 app.use(logger(isProduction ? 'combined' : 'dev'));
+app.use(cookieParser());
+
+/*
+ * Interface language. The UI ships Simplified Chinese and English; the choice
+ * is kept in a cookie so it survives restarts and applies to every page.
+ */
+app.use((req, res, next) => {
+  const locale = i18n.negotiate(req);
+  req.locale = locale;
+  res.locals.locale = locale;
+  res.locals.htmlLang = locale;
+  res.locals.t = (key, vars) => i18n.translate(locale, key, vars);
+  res.locals.switchTo = locale === 'en' ? 'zh-CN' : 'en';
+  req.t = res.locals.t;
+  next();
+});
+
+app.get('/lang/:locale', (req, res) => {
+  const locale = i18n.normalizeLocale(req.params.locale);
+  if (locale) {
+    res.cookie('lang', locale, {
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: tlsEnabled
+    });
+  }
+  // Only ever redirect to a local path: never to an attacker-supplied origin.
+  const referer = req.get('referer') || '';
+  let back = '/';
+  try {
+    if (referer) {
+      const parsed = new URL(referer);
+      back = parsed.pathname + parsed.search;
+    }
+  } catch (err) {
+    back = '/';
+  }
+  if (!back.startsWith('/') || back.startsWith('//')) back = '/';
+  return res.redirect(back);
+});
 
 /*
  * CSRF defence in depth: every state-changing request must originate from the
  * same host when the browser sends Origin/Referer. Session cookies are also
  * SameSite=Lax, so a cross-site form POST will not carry them.
+ *
+ * The comparison is done on hostnames (see ./origin.js): a reverse proxy that
+ * rewrites Host, or a browser that omits the default port, used to make every
+ * login fail with "Bad request origin". Extra hostnames can be declared with
+ * ALLOWED_ORIGINS="https://zt.example.com,https://other.example".
  */
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+const trustProxyHeaders = Boolean(process.env.TRUST_PROXY);
+
 app.use((req, res, next) => {
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-  const source = req.get('origin') || req.get('referer');
-  if (!source) return next(); // non-browser client; still needs a session cookie
-  let sourceHost;
-  try {
-    sourceHost = new URL(source).host;
-  } catch (err) {
-    return res.status(403).type('text/plain').send('Bad request origin');
-  }
-  if (sourceHost !== req.get('host')) {
-    return res.status(403).type('text/plain').send('Bad request origin');
-  }
-  next();
+  const result = checkOrigin(req, { allowedOrigins, trustProxy: trustProxyHeaders });
+  if (result.ok) return next();
+  console.warn('rejected %s %s: origin=%s candidates=%s',
+    req.method, req.originalUrl, result.origin, result.candidates.join(',') || '(none)');
+  const message = res.locals && res.locals.t
+    ? res.locals.t('err.badOrigin')
+    : 'Bad request origin';
+  return res.status(403).type('text/plain').send(message);
 });
 
 app.use(bodyParser.json({ limit: '256kb' }));
 app.use(bodyParser.urlencoded({ extended: false, limit: '256kb' }));
-app.use(cookieParser());
 app.use(session({
   name: 'ztncui.sid',
   resave: false,

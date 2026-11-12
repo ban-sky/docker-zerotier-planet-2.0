@@ -8,35 +8,35 @@ extends controller_layout
 block content
   .page-head
     div
-      p.eyebrow Controller
-      h1 Networks
-    a.btn.btn-primary(href='/controller/network/create') New network
+      p.eyebrow= t('overview.eyebrow')
+      h1= t('page.networks')
+    a.btn.btn-primary(href='/controller/network/create')= t('btn.newNetwork')
 
   if error
     .alert.alert-error= error
   else if !networks || networks.length === 0
     .empty-state
-      h2 No networks yet
-      p Create a network to issue addresses and authorise members.
-      a.btn.btn-primary(href='/controller/network/create') Create the first network
+      h2= t('networks.emptyTitle')
+      p= t('networks.emptyText')
+      a.btn.btn-primary(href='/controller/network/create')= t('btn.createFirstNetwork')
   else
     .card.table-card
       .table-wrap
         table.data-table
           thead
             tr
-              th Network
-              th.mono Network ID
-              th Actions
+              th= t('field.network')
+              th.mono= t('field.networkId')
+              th= t('field.actions')
           tbody
             each network in networks
               - const nwurl = '/controller/network/' + network.nwid
               tr
-                td(data-label='Network')
+                td(data-label=t('field.network'))
                   a.row-title(href=nwurl)= network.name
-                td.mono(data-label='Network ID')= network.nwid
-                td.actions(data-label='Actions')
-                  a.btn.btn-sm.btn-ghost(href=nwurl) Details
-                  a.btn.btn-sm.btn-ghost(href=nwurl + '/easy') Easy setup
-                  a.btn.btn-sm.btn-ghost(href=nwurl + '#members') Members
-                  a.btn.btn-sm.btn-danger(href=nwurl + '/delete', data-confirm='Delete this network and all of its members?') Delete
+                td.mono(data-label=t('field.networkId'))= network.nwid
+                td.actions(data-label=t('field.actions'))
+                  a.btn.btn-sm.btn-ghost(href=nwurl)= t('btn.details')
+                  a.btn.btn-sm.btn-ghost(href=nwurl + '/easy')= t('btn.easySetup')
+                  a.btn.btn-sm.btn-ghost(href=nwurl + '#members')= t('members.title')
+                  a.btn.btn-sm.btn-danger(href=nwurl + '/delete', data-confirm=t('confirm.deleteNetwork'))= t('btn.delete')

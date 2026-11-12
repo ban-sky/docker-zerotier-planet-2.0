@@ -6,17 +6,17 @@
 extends controller_layout
 
 block nav_items
-  +nav_item('controller_home', 'Overview', '/controller')
-  +nav_item('networks', 'Networks', '/controller/networks')
-  +nav_item('users', 'Users', '/users')
-  +nav_item('create_user', 'Invite user', '/users/create')
+  +nav_item('controller_home', t('nav.overview'), '/controller')
+  +nav_item('networks', t('nav.networks'), '/controller/networks')
+  +nav_item('users', t('nav.users'), '/users')
+  +nav_item('create_user', t('nav.inviteUser'), '/users/create')
 
 block content
   .page-head
     div
-      p.eyebrow Access
+      p.eyebrow= t('overview.accessKicker')
       h1= title
-    a.btn.btn-ghost(href='/users') All users
+    a.btn.btn-ghost(href='/users')= t('nav.allUsers')
   if error
     .alert.alert-error= error
   else

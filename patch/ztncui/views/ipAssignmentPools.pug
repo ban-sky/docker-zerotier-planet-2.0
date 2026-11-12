@@ -14,34 +14,34 @@ block net_content
       table.data-table
         thead
           tr
-            th Range start
-            th Range end
+            th= t('field.rangeStart')
+            th= t('field.rangeEnd')
             th
         tbody
           each pool in pools
             tr
-              td.mono(data-label='Range start')= pool.ipRangeStart
-              td.mono(data-label='Range end')= pool.ipRangeEnd
-              td.actions(data-label='Actions')
-                a.btn.btn-sm.btn-danger(href=nwurl + '/ipAssignmentPools/' + pool.ipRangeStart + '/' + pool.ipRangeEnd + '/delete', data-confirm='Delete this assignment pool?') Delete
+              td.mono(data-label=t('field.rangeStart'))= pool.ipRangeStart
+              td.mono(data-label=t('field.rangeEnd'))= pool.ipRangeEnd
+              td.actions(data-label=t('field.actions'))
+                a.btn.btn-sm.btn-danger(href=nwurl + '/ipAssignmentPools/' + pool.ipRangeStart + '/' + pool.ipRangeEnd + '/delete', data-confirm=t('confirm.deletePool'))= t('btn.delete')
           else
             tr
               td(colspan='3')
-                .empty-inline No assignment pools configured.
+                .empty-inline= t('pools.empty')
 
   .card.form-card
-    h2 Add assignment pool
+    h2= t('pools.addTitle')
     form.form-stack(method='POST', action=nwurl + '/ipAssignmentPools')
       .field-row
         .field
-          label(for='ipRangeStart') Range start
+          label(for='ipRangeStart')= t('field.rangeStart')
           input#ipRangeStart(type='text', name='ipRangeStart', placeholder='10.42.0.100', value=(typeof ipAssignmentPool === 'undefined' ? '' : ipAssignmentPool.ipRangeStart), required)
         .field
-          label(for='ipRangeEnd') Range end
+          label(for='ipRangeEnd')= t('field.rangeEnd')
           input#ipRangeEnd(type='text', name='ipRangeEnd', placeholder='10.42.0.200', value=(typeof ipAssignmentPool === 'undefined' ? '' : ipAssignmentPool.ipRangeEnd), required)
       .form-actions
-        button.btn.btn-primary(type='submit') Add pool
-        a.btn.btn-ghost(href=nwurl) Cancel
+        button.btn.btn-primary(type='submit')= t('btn.addPool')
+        a.btn.btn-ghost(href=nwurl)= t('btn.cancel')
 
   if errors
     .alert.alert-error

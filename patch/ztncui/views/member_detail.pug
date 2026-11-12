@@ -14,7 +14,7 @@ block net_content
       div
         h2= member.name || memberId
         p.card-subtitle.mono= memberId
-      a.btn.btn-sm.btn-ghost(href=nwurl + '#members') Members
+      a.btn.btn-sm.btn-ghost(href=nwurl + '#members')= t('members.title')
 
     dl.detail-list
       each value, key in member
@@ -24,4 +24,4 @@ block net_content
           dd
             +json_value(value)
 
-  a.btn.btn-ghost(href=nwurl + '#members') Back to members
+  a.btn.btn-ghost(href=nwurl + '#members')= t('btn.backToMembers')

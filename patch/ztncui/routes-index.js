@@ -10,6 +10,12 @@ const authenticate = auth.authenticate;
 const restrict = auth.restrict;
 const router = express.Router();
 
+// Translate a user-visible string when the i18n middleware is installed; fall
+// back to the key so the UI still renders when it is not.
+function msg(req, key, vars) {
+  return req.t ? req.t(key, vars) : key;
+}
+
 // Failed-login throttling. Per source IP, 10 failures per 15 minutes.
 const MAX_FAILURES = 10;
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
@@ -92,7 +98,7 @@ router.get('/login', guest_only, function(req, res) {
   } else {
     message = req.session.success;
   }
-  res.render('login', { title: 'Login', message: message });
+  res.render('login', { title: msg(req, 'page.login'), message: message });
 });
 
 router.post('/login', async function(req, res, next) {
@@ -101,8 +107,8 @@ router.post('/login', async function(req, res, next) {
   if (isThrottled(ip)) {
     res.setHeader('Retry-After', '900');
     return res.status(429).render('login', {
-      title: 'Login',
-      message: 'Too many failed login attempts. Please try again later.'
+      title: msg(req, 'page.login'),
+      message: msg(req, 'msg.tooManyAttempts')
     });
   }
 
@@ -112,8 +118,8 @@ router.post('/login', async function(req, res, next) {
   if (!username || !password || username.length > 128 || password.length > 160) {
     recordFailure(ip);
     return res.status(401).render('login', {
-      title: 'Login',
-      message: 'Authentication failed, please check your username and password.'
+      title: msg(req, 'page.login'),
+      message: msg(req, 'msg.authFailed')
     });
   }
 
@@ -122,8 +128,8 @@ router.post('/login', async function(req, res, next) {
       if (!user) {
         recordFailure(ip);
         return res.status(401).render('login', {
-          title: 'Login',
-          message: 'Authentication failed, please check your username and password.'
+          title: msg(req, 'page.login'),
+          message: msg(req, 'msg.authFailed')
         });
       }
 
@@ -131,7 +137,7 @@ router.post('/login', async function(req, res, next) {
       req.session.regenerate(function(regenErr) {
         if (regenErr) return next(regenErr);
         req.session.user = user;
-        req.session.success = 'Authenticated as ' + user.name;
+        req.session.success = msg(req, 'msg.authenticatedAs', { name: user.name });
         if (user.pass_set) {
           res.redirect(safeRedirect(req.query.redirect));
         } else {

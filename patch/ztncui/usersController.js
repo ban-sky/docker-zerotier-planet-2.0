@@ -34,6 +34,12 @@ const unlink = util.promisify(fs.unlink);
 
 let _users = null;
 
+// Translate a user-visible string when the i18n middleware is installed; fall
+// back to the key so the UI still renders when it is not.
+function msg(req, key, vars) {
+  return req.t ? req.t(key, vars) : key;
+}
+
 function validUsername(name) {
   return typeof name === 'string' && username_re.test(name) && !reserved_names.has(name);
 }
@@ -66,14 +72,14 @@ exports.users_list = async function(req, res) {
   try {
     const users = await get_users();
     const list = Object.keys(users).map((name) => ({ name, pass_set: !!users[name].pass_set }));
-    res.render('users', { title: 'Admin users', navigate, message: 'List of users with admin privileges', users: list });
+    res.render('users', { title: msg(req, 'page.adminUsers'), navigate, message: msg(req, 'users.description'), users: list });
   } catch (err) {
     res.status(500).render('users', {
-      title: 'Admin users',
+      title: msg(req, 'page.adminUsers'),
       navigate,
-      message: 'Error',
+      message: msg(req, 'msg.error'),
       users: null,
-      error: 'Error returning list of users'
+      error: msg(req, 'users.listFailed')
     });
   }
 };
@@ -84,7 +90,7 @@ exports.password_get = async function(req, res) {
   const sessionUser = req.session.user && req.session.user.name;
 
   if (!validUsername(target)) {
-    return res.status(400).render('error', { message: 'Invalid username', error: {} });
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
   }
 
   let users;
@@ -96,12 +102,12 @@ exports.password_get = async function(req, res) {
 
   const existing = Object.prototype.hasOwnProperty.call(users, target) ? users[target] : null;
   if (existing && existing.pass_set && target !== sessionUser) {
-    return res.status(403).render('error', { message: 'You may only change your own password', error: {} });
+    return res.status(403).render('error', { message: msg(req, 'msg.ownPasswordOnly'), error: {} });
   }
 
   const user = { name: target, password1: null, password2: null };
   res.render('password', {
-    title: 'Set password',
+    title: msg(req, 'page.setPassword'),
     navigate,
     user,
     readonly: true,
@@ -115,7 +121,7 @@ exports.password_post = async function(req, res) {
   const sessionUser = req.session.user && req.session.user.name;
 
   if (!validUsername(target)) {
-    return res.status(400).render('error', { message: 'Invalid username', error: {} });
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
   }
 
   let users;
@@ -127,23 +133,23 @@ exports.password_post = async function(req, res) {
 
   const existing = Object.prototype.hasOwnProperty.call(users, target) ? users[target] : null;
   if (existing && existing.pass_set && target !== sessionUser) {
-    return res.status(403).render('error', { message: 'You may only change your own password', error: {} });
+    return res.status(403).render('error', { message: msg(req, 'msg.ownPasswordOnly'), error: {} });
   }
 
-  req.checkBody('password1', 'Password required').notEmpty();
-  req.checkBody('password1', 'Minimum password length is ' + min_pass_len + ' characters')
+  req.checkBody('password1', msg(req, 'msg.passwordRequired')).notEmpty();
+  req.checkBody('password1', msg(req, 'msg.passwordMinLength', { min: min_pass_len }))
     .isLength({ min: min_pass_len, max: max_pass_len });
-  req.checkBody('password2', 'Please re-enter password').notEmpty();
-  req.checkBody('password2', 'Passwords are not the same').equals(req.body.password1);
+  req.checkBody('password2', msg(req, 'msg.passwordReenter')).notEmpty();
+  req.checkBody('password2', msg(req, 'msg.passwordsDiffer')).equals(req.body.password1);
 
   const errors = req.validationErrors();
   if (errors) {
     return res.status(400).render('password', {
-      title: 'Set password',
+      title: msg(req, 'page.setPassword'),
       navigate,
       user: { name: target, password1: null, password2: null },
       readonly: true,
-      message: 'Please check errors below',
+      message: msg(req, 'msg.checkErrorsBelow'),
       errors
     });
   }
@@ -161,18 +167,18 @@ exports.password_post = async function(req, res) {
   }
 
   res.render('password', {
-    title: 'Set password',
+    title: msg(req, 'page.setPassword'),
     navigate,
     user: { name: target },
     readonly: true,
-    message: 'Successfully set password for ' + target
+    message: msg(req, 'msg.passwordSetFor', { name: target })
   });
 };
 
 exports.user_create_get = async function(req, res) {
   const navigate = { active: 'create_user' };
   res.render('password', {
-    title: 'Create new admin user',
+    title: msg(req, 'page.createAdmin'),
     navigate,
     user: { name: null, password1: null, password2: null },
     readonly: false,
@@ -186,11 +192,11 @@ exports.user_create_post = async function(req, res) {
 
   if (!validUsername(name)) {
     return res.status(400).render('password', {
-      title: 'Create new admin user',
+      title: msg(req, 'page.createAdmin'),
       navigate,
       user: { name, password1: null, password2: null },
       readonly: false,
-      message: 'Username must be 1-64 characters: letters, digits, dot, underscore or dash'
+      message: msg(req, 'msg.usernameRule')
     });
   }
 
@@ -202,11 +208,11 @@ exports.user_create_post = async function(req, res) {
   }
   if (Object.prototype.hasOwnProperty.call(users, name)) {
     return res.status(409).render('password', {
-      title: 'Create new admin user',
+      title: msg(req, 'page.createAdmin'),
       navigate,
       user: { name, password1: null, password2: null },
       readonly: false,
-      message: 'A user with that name already exists'
+      message: msg(req, 'msg.userExists')
     });
   }
 
@@ -227,18 +233,18 @@ exports.user_delete_get = async function(req, res) {
 
   const user = Object.prototype.hasOwnProperty.call(users, target) ? users[target] : null;
   if (!user) {
-    return res.status(404).render('user_delete', { title: 'Delete user', navigate, user: null });
+    return res.status(404).render('user_delete', { title: msg(req, 'page.deleteUser'), navigate, user: null });
   }
   if (req.session.user && req.session.user.name === target) {
     return res.status(400).render('user_delete', {
-      title: 'Delete user',
+      title: msg(req, 'page.deleteUser'),
       navigate,
       user,
       self_delete: true
     });
   }
 
-  res.render('user_delete', { title: 'Delete user', navigate, user });
+  res.render('user_delete', { title: msg(req, 'page.deleteUser'), navigate, user });
 };
 
 exports.user_delete_post = async function(req, res) {
@@ -258,11 +264,11 @@ exports.user_delete_post = async function(req, res) {
 
   const user = Object.prototype.hasOwnProperty.call(users, target) ? users[target] : null;
   if (!user) {
-    return res.status(404).render('user_delete', { title: 'Delete user', navigate, user: null });
+    return res.status(404).render('user_delete', { title: msg(req, 'page.deleteUser'), navigate, user: null });
   }
   if (req.session.user && req.session.user.name === target) {
     return res.status(400).render('user_delete', {
-      title: 'Delete user',
+      title: msg(req, 'page.deleteUser'),
       navigate,
       user,
       self_delete: true
@@ -270,10 +276,10 @@ exports.user_delete_post = async function(req, res) {
   }
   if (Object.keys(users).length <= 1) {
     return res.status(400).render('user_delete', {
-      title: 'Delete user',
+      title: msg(req, 'page.deleteUser'),
       navigate,
       user,
-      errors: [{ msg: 'The last admin user cannot be deleted' }]
+      errors: [{ msg: msg(req, 'msg.lastAdminCannotBeDeleted') }]
     });
   }
 
@@ -281,7 +287,7 @@ exports.user_delete_post = async function(req, res) {
   await update_users(users);
 
   res.render('user_delete', {
-    title: 'Deleted user',
+    title: msg(req, 'page.deletedUser'),
     navigate,
     user: { name: target },
     deleted: true

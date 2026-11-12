@@ -7,19 +7,19 @@ extends users_layout
 
 block users_content
   if user === null
-    .alert.alert-warn No such user.
+    .alert.alert-warn= t('userDelete.noSuchUser')
   else if self_delete === true
-    .alert.alert-error You may not delete your own account.
+    .alert.alert-error= t('userDelete.selfDelete')
   else if deleted
-    .alert.alert-success #{user.name} was deleted.
+    .alert.alert-success= t('userDelete.deleted', { name: user.name })
   else
     .card.form-card
-      h2 Delete user
-      p.card-subtitle This cannot be undone. The last admin cannot be deleted.
+      h2= t('page.deleteUser')
+      p.card-subtitle= t('userDelete.subtitle')
       form.form-stack(method='POST', action='')
         .form-actions
-          button.btn.btn-danger(type='submit', name='delete', value='delete') Delete #{user.name}
-          a.btn.btn-ghost(href='/users') Cancel
+          button.btn.btn-danger(type='submit', name='delete', value='delete')= t('userDelete.confirmButton', { name: user.name })
+          a.btn.btn-ghost(href='/users')= t('btn.cancel')
 
   if errors
     .alert.alert-error

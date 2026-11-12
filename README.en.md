@@ -86,13 +86,25 @@ collapses into a menu:
 - Compose defaults to `read_only`, `no-new-privileges` and a `tmpfs` `/tmp`.
 - `SECURITY.md`, a disclosure process, dependency lockfiles and regression tests.
 
-### Deployment integrations (2.1.0)
+### What 2.2.0 fixes and adds
+
+- **`Bad request origin` on login is fixed.** The origin check now compares hostnames and
+  trusts a proxy-forwarded `X-Forwarded-Host` (see
+  [Reverse proxies and origin checks](#reverse-proxies-and-origin-checks)), so reverse
+  proxies, port remaps and Origins without the default port no longer get rejected.
+  Cross-site posts are still refused. Covered by the new `tests/origin.test.js`.
+- **Simplified Chinese UI.** Every server-rendered admin page ships Chinese and English
+  copy; the default is `zh-CN`, switchable from the header, stored in a cookie.
+- **1Panel cron helper.** `scripts/1panel-scheduled-update.sh` can be scheduled as a
+  1Panel cron job to refresh the app package and restart the installed instance.
+
+### Deployment integrations (2.2.0)
 
 - Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
   panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
-  release version (e.g. `v2.1.0`) so the panel can detect updates.
-- The app package is published next to the `docker save` archives in every Release, and
-  `SHA256SUMS` covers both.
+  release version (e.g. `v2.2.0`) so the panel can detect updates.
+- The app package, the `docker save` archives and the cron helper are published together in
+  every Release, with `SHA256SUMS` covering all of them.
 
 ## Quick start
 
@@ -128,7 +140,7 @@ directory.
 > `docker-zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0` directly.
+> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0` directly.
 
 ### Option 2: Compose
 
@@ -157,7 +169,7 @@ sudo ./scripts/install-1panel-app.sh
 No checkout? Use the Release asset instead:
 
 ```bash
-sudo tar -xzf 1panel-app-v2.1.0.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-v2.2.0.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
@@ -185,7 +197,50 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 > The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
 > the **professional edition** "custom repository" can point at the `1panel/apps`
 > directory of this repository as well. The image tag inside the package is pinned
-> to `v2.1.0` (never `latest`) so the panel can detect version updates.
+> to `v2.2.0` (never `latest`) so the panel can detect version updates.
+
+#### Cron job: follow new releases automatically
+
+`scripts/1panel-scheduled-update.sh` is meant to be scheduled as a 1Panel
+**Cron job → Shell script** entry; it refreshes the app package (and the installed
+container) to the newest Release:
+
+```bash
+# see what it would do
+sudo ./scripts/1panel-scheduled-update.sh --dry-run
+
+# refresh the app package and the installed instance (default)
+sudo ./scripts/1panel-scheduled-update.sh
+
+# refresh the package only, leave the running container alone
+sudo ./scripts/1panel-scheduled-update.sh --no-restart
+
+# pin a specific version
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.2.0
+```
+
+In the panel: **Cron job → Create → Task type `Shell script`**, run it on whatever
+schedule you like (e.g. daily at 04:00), with this command:
+
+```bash
+/path/to/docker-zerotier-planet-2.0/scripts/1panel-scheduled-update.sh --quiet
+```
+
+It resolves the latest tag on GitHub, compares it with
+`.../apps/local/zerotier-planet/<version>`, downloads `1panel-app-<tag>.tar.gz`,
+verifies `SHA256SUMS`, keeps a backup of the previous package (last five are kept),
+then re-points the installed compose file at the new image tag and runs
+`docker compose pull && up -d` — a failure exits non-zero and shows up in the cron
+log. `--quiet` is cron-friendly (warnings and errors only); exporting
+`GITHUB_TOKEN` raises the GitHub API rate limit. The script is also attached to
+every Release, so a host without a git checkout can just download it.
+
+### Interface language
+
+The admin UI ships **Simplified Chinese** and English. The default is `zh-CN`
+(it follows the browser `Accept-Language`, and `DEFAULT_LOCALE=en` changes the
+default). The header switch stores the choice in a `lang` cookie; the switch is
+plain `/lang/zh-CN` and `/lang/en` links, no JavaScript involved.
 
 ### First login
 
@@ -257,10 +312,22 @@ zerotier-cli orbit <moon-id> <moon-id>
 | `REGENERATE_PLANET` | `1` | Rebuild the planet on every start (identity unchanged) |
 | `APP_UID` / `APP_GID` | `1000` | uid/gid used by the services |
 | `HTTPS_HOST` | `0.0.0.0` | Set to `::` to listen on IPv6 as well |
-| `TRUST_PROXY` | empty | Number of trusted proxies, e.g. `1`; enables `X-Forwarded-For` for throttling |
+| `DEFAULT_LOCALE` | `zh-CN` | Default UI language: `zh-CN` or `en` |
+| `ALLOWED_ORIGINS` | empty | Extra allowed form origins, comma separated, e.g. `https://zt.example.com` |
+| `TRUST_PROXY` | empty | Number of trusted proxies, e.g. `1`; trusts `X-Forwarded-For` and `X-Forwarded-Host` |
 
 Publish ports with `docker run -p` or Compose; the in-container ports are fixed
 so documentation, health checks and the UI stay consistent.
+
+### Reverse proxies and origin checks
+
+The admin UI accepts state-changing requests (`POST`/`PUT`/`PATCH`/`DELETE`) only
+from the same origin. The check compares **hostnames** and automatically trusts a
+proxy-forwarded host when the request comes from a loopback or private address
+(the normal container / same-host proxy case), or when `TRUST_PROXY` is set. That
+is why Nginx, Caddy or the 1Panel site proxy no longer trigger
+`Bad request origin` when they rewrite `Host`. If your public name never reaches
+the container (a CDN in front, for example), list it in `ALLOWED_ORIGINS`.
 
 ### Custom certificates
 
@@ -392,10 +459,12 @@ cd patch/ztncui && npm ci --omit=dev --ignore-scripts
 cd ../..
 ./tests/http-server.test.sh
 node tests/ztncui-views.test.js
+node tests/origin.test.js
 ```
 
-`tests/http-server.test.sh` contains file-server security regression tests, and
-`tests/ztncui-views.test.js` compiles every Pug view.
+`tests/http-server.test.sh` contains file-server security regression tests,
+`tests/ztncui-views.test.js` compiles every Pug view, and `tests/origin.test.js`
+covers the origin check (reverse proxies, port remaps, cross-site posts).
 
 ### Building and releasing with GitHub Actions
 
@@ -410,8 +479,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.1.0 -m "docker-zerotier-planet 2.0"
-git push origin v2.1.0
+git tag -a v2.2.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.2.0
 ```
 
 The tag runs four jobs:
@@ -432,23 +501,24 @@ The tag runs four jobs:
 Release assets:
 
 ```text
-docker-zerotier-planet-2.0-v2.1.0-amd64.tar.gz    # gzipped docker save archive
-docker-zerotier-planet-2.0-v2.1.0-arm64.tar.gz    # only when include_arm64 is set
-1panel-app-v2.1.0.tar.gz                          # 1Panel app package
+docker-zerotier-planet-2.0-v2.2.0-amd64.tar.gz    # gzipped docker save archive
+docker-zerotier-planet-2.0-v2.2.0-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-v2.2.0.tar.gz                          # 1Panel app package
+1panel-scheduled-update.sh                          # cron helper: update the app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-v2.1.0.txt                            # load and run instructions
+LOAD-amd64-v2.2.0.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < docker-zerotier-planet-2.0-v2.1.0-amd64.tar.gz
+docker load < docker-zerotier-planet-2.0-v2.2.0-amd64.tar.gz
 docker images | grep docker-zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`, so the `image:` field in
+`ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0`, so the `image:` field in
 `docker-compose.yml` can point straight at it.
 
 ### Image registries
@@ -464,21 +534,21 @@ multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0
 
 # Docker Hub
-docker pull lonelyx/docker-zerotier-planet-2.0:v2.1.0
+docker pull lonelyx/docker-zerotier-planet-2.0:v2.2.0
 ```
 
 Tag semantics (identical on both registries):
 
 | Tag | Contents | Updated when |
 | --- | --- | --- |
-| `v2.1.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `v2.2.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
 | `latest` | the most recent release | same |
 | `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
 
-Current `v2.1.0` manifest (identical on both registries):
+Current `v2.2.0` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -521,13 +591,13 @@ Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub (useful when it is the faster registry for you)
-sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.1.0 \
+sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.2.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -536,7 +606,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0 \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 
@@ -600,6 +670,11 @@ manually.
   unreadable certificate.
 - **Certificate warning**: expected with the self-signed certificate; import it
   or switch to a trusted certificate.
+- **`Bad request origin` when logging in**: the 2.0/2.1 origin check was too strict;
+  2.2.0 fixes it. If it still happens, the request origin differs from both `Host`
+  and `X-Forwarded-Host`: make the proxy pass `Host $host` (plus
+  `X-Forwarded-Host $host`), or add the name to `ALLOWED_ORIGINS`. The container log
+  prints `rejected ... origin=... candidates=...` so the mismatch is visible.
 - **Download returns 401**: use `Authorization: Bearer <key>` rather than
   `?key=`; or copy `data/dist/planet` directly.
 

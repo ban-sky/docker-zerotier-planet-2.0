@@ -13,29 +13,29 @@ block users_content
     .alert.alert-error= error
   else if !users || users.length === 0
     .empty-state
-      h2 No admin users
-      p Create an administrator to access the controller.
-      a.btn.btn-primary(href='/users/create') Create admin
+      h2= t('users.emptyTitle')
+      p= t('users.emptyText')
+      a.btn.btn-primary(href='/users/create')= t('btn.createAdmin')
   else
     .card.table-card
       .table-wrap
         table.data-table
           thead
             tr
-              th User
-              th Password
-              th Actions
+              th= t('field.user')
+              th= t('field.password')
+              th= t('field.actions')
           tbody
             each user in users
               - const userUrl = '/users/' + encodeURIComponent(user.name)
               tr
-                td(data-label='User')
+                td(data-label=t('field.user'))
                   a.row-title(href=userUrl + '/password')= user.name
-                td(data-label='Password')
+                td(data-label=t('field.password'))
                   if user.pass_set
-                    span.badge.badge-ok Set
+                    span.badge.badge-ok= t('users.passSet')
                   else
-                    span.badge.badge-warn Change required
-                td.actions(data-label='Actions')
-                  a.btn.btn-sm.btn-ghost(href=userUrl + '/password') Set password
-                  a.btn.btn-sm.btn-danger(href=userUrl + '/delete', data-confirm='Delete this admin user?') Delete
+                    span.badge.badge-warn= t('users.changeRequired')
+                td.actions(data-label=t('field.actions'))
+                  a.btn.btn-sm.btn-ghost(href=userUrl + '/password')= t('btn.setPassword')
+                  a.btn.btn-sm.btn-danger(href=userUrl + '/delete', data-confirm=t('users.deleteConfirm'))= t('btn.delete')

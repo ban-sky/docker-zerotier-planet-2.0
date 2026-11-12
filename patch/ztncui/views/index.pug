@@ -8,36 +8,36 @@ extends controller_layout
 block content
   .page-head
     div
-      p.eyebrow Controller
-      h1 Overview
-    a.btn.btn-primary(href='/controller/network/create') New network
+      p.eyebrow= t('overview.eyebrow')
+      h1= t('overview.title')
+    a.btn.btn-primary(href='/controller/network/create')= t('btn.newNetwork')
 
   if error
     .alert.alert-error= error
   else
     .stat-grid
       .stat
-        span.stat-label Controller address
+        span.stat-label= t('overview.addressLabel')
         strong.mono= zt_status.address
-        span.stat-hint This is the identity clients connect to.
+        span.stat-hint= t('overview.addressHint')
       .stat
-        span.stat-label ZeroTier version
+        span.stat-label= t('overview.versionLabel')
         strong= zt_status.version
-        span.stat-hint Planet and controller run in this container.
+        span.stat-hint= t('overview.versionHint')
 
     .card-grid
       a.card.action-card(href='/controller/networks')
-        span.card-kicker Networks
-        strong Manage networks
-        span.card-text Review members, routes, DNS and assignment pools.
+        span.card-kicker= t('overview.networksKicker')
+        strong= t('overview.networksTitle')
+        span.card-text= t('overview.networksText')
         span.card-arrow →
       a.card.action-card(href='/users')
-        span.card-kicker Access
-        strong Admin users
-        span.card-text Invite operators and rotate passwords.
+        span.card-kicker= t('overview.accessKicker')
+        strong= t('overview.accessTitle')
+        span.card-text= t('overview.accessText')
         span.card-arrow →
       a.card.action-card(href='/users')
-        span.card-kicker Security
-        strong Change your password
-        span.card-text Passwords are hashed with Argon2id.
+        span.card-kicker= t('overview.securityKicker')
+        strong= t('overview.securityTitle')
+        span.card-text= t('overview.securityText')
         span.card-arrow →

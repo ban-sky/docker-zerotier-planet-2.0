@@ -2,6 +2,43 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.2.0] - 2026-11-12
+
+### 修复
+
+- **登录时报 `Bad request origin`**（2.0.x / 2.1.0 回归）：来源校验原先直接比较
+  `Origin` 的 `host:port` 与 `Host` 头，只要反向代理重写了 `Host`、端口做了映射，或浏览器
+  省略了默认端口，所有表单提交（包括登录）都会被 403。现在改为比较**主机名**，并在请求
+  来自回环/私有网段（容器网络、同机反代）或设置了 `TRUST_PROXY` 时信任
+  `X-Forwarded-Host` / `Forwarded: host=`；跨站提交仍然拒绝，同时打印
+  `rejected ... origin=... candidates=...` 便于排查。新增 `ALLOWED_ORIGINS` 作为显式白名单，
+  新增 `tests/origin.test.js`（18 项）。
+- 管理界面 `lang` cookie 与 403 文案统一走新的 i18n 层，不再有硬编码英文。
+
+### 新增
+
+- **简体中文界面**：服务端渲染的全部 26 个视图支持中英双语，默认 `zh-CN`（跟随
+  `Accept-Language`，可用 `DEFAULT_LOCALE` 改默认值），顶部提供 `/lang/zh-CN`、`/lang/en`
+  普通链接切换，选择持久化在 cookie 中；CSP 仍为 `'self'`，无内联脚本样式。
+- `scripts/1panel-scheduled-update.sh`：1Panel **计划任务** 专用更新脚本 —— 查询最新
+  Release → 与本地应用包版本比较 → 下载并校验 `SHA256SUMS` → 备份后替换应用包（保留最近
+  5 个备份）→ 把已安装实例的 compose 镜像 tag 指向新版本并 `docker compose pull && up -d`。
+  支持 `--tag` / `--panel-dir` / `--no-restart` / `--dry-run` / `--quiet`，并作为 Release
+  附件发布。
+- 新增 1Panel 应用商店版本目录 `1panel/apps/zerotier-planet/2.2.0/`。
+
+### 镜像
+
+- `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0`（发布时同时打 `latest`）
+- `docker.io/lonelyx/docker-zerotier-planet-2.0:v2.2.0`（发布时同时打 `latest`）
+
+### 文档
+
+- README（中/英）新增「2.2.0 的修复与新增」「反向代理与来源校验」「界面语言」
+  「计划任务：自动跟进最新版本」章节，环境变量表补充 `DEFAULT_LOCALE` / `ALLOWED_ORIGINS`，
+  故障排查补充 `Bad request origin` 条目。
+- 版本号统一到 v2.2.0，Release 附件清单补充 `1panel-scheduled-update.sh`。
+
 ## [2.1.0] - 2026-11-12
 
 ### 新增

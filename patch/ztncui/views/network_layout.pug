@@ -8,16 +8,16 @@ extends controller_layout
 block content
   if error
     .alert.alert-error= error
-    a.btn.btn-ghost(href='/controller/networks') Back to networks
+    a.btn.btn-ghost(href='/controller/networks')= t('btn.backToNetworks')
   else if !network
-    .alert.alert-error Network details are unavailable.
-    a.btn.btn-ghost(href='/controller/networks') Back to networks
+    .alert.alert-error= t('networkLayout.unavailable')
+    a.btn.btn-ghost(href='/controller/networks')= t('btn.backToNetworks')
   else
     .page-head
       div
-        p.eyebrow Network
+        p.eyebrow= t('field.network')
         h1
           a(href='/controller/network/' + network.nwid)= network.name
           span.mono.page-id= network.nwid
-      a.btn.btn-ghost(href=navigate.whence || '/controller/networks') Back
+      a.btn.btn-ghost(href=navigate.whence || '/controller/networks')= t('nav.back')
     block net_content

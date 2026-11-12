@@ -9,6 +9,7 @@
 - 自动生成 planet 与 moon 文件，客户端可用自定义 planet 加入你的网络。
 - 首次启动生成随机管理员密码，首次登录强制改密，改密后密码文件自动删除。
 - 管理界面与文件服务器默认 HTTPS（自签 ECDSA P-256 证书）。
+- 管理界面内置简体中文与英文，默认简体中文，右上角可切换。
 - planet 下载走 `Authorization: Bearer` 鉴权，不再把密钥放在 URL 里。
 - 数据持久化在应用目录的 `data/`（`config`、`dist`、`one`）。
 
@@ -18,6 +19,20 @@
 2. 安装完成后访问 `https://<服务器IP>:<管理界面端口>`。
 3. 首次登录：进入应用「终端」，执行
    `cat /app/config/admin-password` 取初始密码，用 `admin` 登录并立即改密。
+
+## 自动更新（计划任务）
+
+把项目里的 `scripts/1panel-scheduled-update.sh` 挂到 **计划任务 → Shell 脚本**，即可按周期
+跟进最新 Release：
+
+```bash
+# 下载后执行一次（脚本也随 Release 附件发布）
+sudo ./1panel-scheduled-update.sh --dry-run   # 先看会做什么
+sudo ./1panel-scheduled-update.sh --quiet     # 实际更新，适合 cron
+```
+
+脚本会更新本应用包并重启已安装实例；`--no-restart` 只更新应用包。详细参数见
+[项目 README](https://github.com/ban-sky/docker-zerotier-planet-2.0#计划任务自动跟进最新版本)。
 
 ## 端口
 

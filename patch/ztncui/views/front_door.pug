@@ -6,13 +6,13 @@
 extends login_layout
 
 block login_content
-  p.eyebrow Self-hosted
-  h1.auth-title Your own ZeroTier planet.
-  p.auth-subtitle A private root server and network controller, running in one container. No third-party control plane.
+  p.eyebrow= t('frontDoor.eyebrow')
+  h1.auth-title= t('frontDoor.title')
+  p.auth-subtitle= t('frontDoor.subtitle')
   .auth-actions
-    a.btn.btn-primary.btn-lg(href='/login') Sign in
-    a.btn.btn-ghost.btn-lg(href='https://www.zerotier.com/download/' target='_blank' rel='noopener noreferrer') Get a client
+    a.btn.btn-primary.btn-lg(href='/login')= t('btn.signIn')
+    a.btn.btn-ghost.btn-lg(href='https://www.zerotier.com/download/' target='_blank' rel='noopener noreferrer')= t('frontDoor.getClient')
   ul.auth-points
-    li Planet, moon and controller in one place
-    li TLS, Argon2id password hashing and header-based planet downloads
-    li ZeroTier 1.16.2 with a hardened admin UI
+    li= t('frontDoor.point1')
+    li= t('frontDoor.point2')
+    li= t('frontDoor.point3')

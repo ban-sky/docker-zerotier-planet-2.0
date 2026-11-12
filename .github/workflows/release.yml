@@ -296,6 +296,36 @@ jobs:
           echo "plaintext on 3443: $code"
           [ "$code" != "200" ]
 
+      - name: Verify the UI is bilingual and proxy origins are accepted
+        run: |
+          set -euo pipefail
+          # Simplified Chinese is the default when the browser does not ask for English
+          curl -ks https://127.0.0.1:3443/login -o /tmp/login-zh.html
+          grep -q '管理员登录' /tmp/login-zh.html
+          grep -q '用户名' /tmp/login-zh.html
+          # English on request
+          curl -ks https://127.0.0.1:3443/login -H 'Accept-Language: en' -o /tmp/login-en.html
+          grep -q 'Admin access' /tmp/login-en.html
+          # the switch endpoint stores the choice and redirects to a local path only
+          curl -ks -o /dev/null -D /tmp/lang.headers https://127.0.0.1:3443/lang/en
+          grep -qi 'set-cookie: lang=en' /tmp/lang.headers
+          grep -qi '^location: /' /tmp/lang.headers
+          # regression: a reverse proxy that rewrites Host must not block the login POST
+          code=$(curl -ks -o /dev/null -w '%{http_code}' -X POST https://127.0.0.1:3443/login \
+            -H 'Host: 127.0.0.1:3443' \
+            -H 'X-Forwarded-Host: planet.example.com' \
+            -H 'Origin: https://planet.example.com' \
+            --data 'user=admin&password=definitely-wrong')
+          echo "login through a proxy: $code"
+          [ "$code" != "403" ]
+          # cross-site submissions are still refused
+          code=$(curl -ks -o /dev/null -w '%{http_code}' -X POST https://127.0.0.1:3443/login \
+            -H 'Host: planet.example.com' \
+            -H 'Origin: https://evil.example.com' \
+            --data 'user=admin&password=x')
+          echo "cross-site login: $code"
+          [ "$code" = "403" ]
+
       - name: Verify the file server requires authentication
         run: |
           set -euo pipefail
@@ -375,12 +405,20 @@ jobs:
           tar -tzf "dist/1panel-app-${VERSION}.tar.gz" | head -20
           ls -lh "dist/1panel-app-${VERSION}.tar.gz"
 
+      - name: Attach the 1Panel cron helper
+        run: |
+          set -euo pipefail
+          cp scripts/1panel-scheduled-update.sh dist/1panel-scheduled-update.sh
+          chmod 755 dist/1panel-scheduled-update.sh
+          bash -n dist/1panel-scheduled-update.sh
+          ls -lh dist/1panel-scheduled-update.sh
+
       - name: Combine checksums
         run: |
           set -euo pipefail
           cd dist
           rm -f SHA256SUMS
-          for f in *.tar.gz; do sha256sum "$f" >> SHA256SUMS; done
+          for f in *.tar.gz 1panel-scheduled-update.sh; do sha256sum "$f" >> SHA256SUMS; done
           cat SHA256SUMS
 
       - name: Write the release notes
@@ -418,6 +456,7 @@ jobs:
             echo "| \`SHA256SUMS\` | Checksums for every archive |"
             echo "| \`SOURCE\` | Exact upstream commits and build arguments |"
             echo "| \`LOAD-*.txt\` | Load/run instructions |"
+            echo "| \`1panel-scheduled-update.sh\` | 1Panel cron helper: install it as a Shell script cron job to follow new releases |"
             echo
             echo "## Load and run"
             echo
@@ -458,6 +497,14 @@ jobs:
             echo
             echo "The initial admin password is in \`/app/config/admin-password\` inside the container;"
             echo "change it at first login, after which the file is deleted."
+            echo
+            echo "## Highlights in this build"
+            echo
+            echo "- Admin UI renders in **Simplified Chinese** or English (\`DEFAULT_LOCALE\`, header switch)."
+            echo "- Origin checks compare hostnames and trust \`X-Forwarded-Host\` from a proxy, so"
+            echo "  reverse proxies no longer break login with \`Bad request origin\`;"
+            echo "  \`ALLOWED_ORIGINS\` adds explicit extra origins."
+            echo "- \`1panel-scheduled-update.sh\` keeps a 1Panel install on the latest release."
           } > RELEASE_NOTES.md
           cat RELEASE_NOTES.md
 

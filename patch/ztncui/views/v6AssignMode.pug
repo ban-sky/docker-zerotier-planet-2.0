@@ -10,29 +10,29 @@ block net_content
   - const mode = network.v6AssignMode || {}
 
   .card.form-card
-    h2 IPv6 assignment
-    p.card-subtitle Choose how IPv6 addresses are derived for members.
+    h2= t('v6.title')
+    p.card-subtitle= t('v6.subtitle')
 
     form.form-stack(method='POST', action='')
       label.check-row
         input(type='checkbox', name='6plane', value='true', checked=mode['6plane'] ? true : false)
         span
-          strong ZT 6PLANE
-          span.check-hint /80 routable prefix for each device.
+          strong= t('v6.sixPlane')
+          span.check-hint= t('v6.sixPlaneHint')
       label.check-row
         input(type='checkbox', name='rfc4193', value='true', checked=mode['rfc4193'] ? true : false)
         span
-          strong RFC 4193
-          span.check-hint /128 unique local address for each device.
+          strong= t('v6.rfc4193')
+          span.check-hint= t('v6.rfc4193Hint')
       label.check-row
         input(type='checkbox', name='zt', value='true', checked=mode.zt ? true : false)
         span
-          strong From assignment pools
-          span.check-hint Use the configured IPv6 assignment pools.
+          strong= t('v6.fromPools')
+          span.check-hint= t('v6.fromPoolsHint')
 
     .form-actions
-      button.btn.btn-primary(type='submit') Save
-      a.btn.btn-ghost(href=nwurl) Cancel
+      button.btn.btn-primary(type='submit')= t('btn.save')
+      a.btn.btn-ghost(href=nwurl)= t('btn.cancel')
 
   if errors
     .alert.alert-error

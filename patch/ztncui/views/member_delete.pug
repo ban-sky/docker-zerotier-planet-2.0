@@ -10,19 +10,19 @@ block net_content
 
   if member.deleted
     .alert.alert-success
-      strong= (member.name || member.id) + ' was removed from the network.'
-    a.btn.btn-ghost(href=nwurl + '#members') Back to members
+      strong= t('memberDelete.removed', { name: member.name || member.id })
+    a.btn.btn-ghost(href=nwurl + '#members')= t('btn.backToMembers')
   else
     .card.form-card
-      h2 Remove member
+      h2= t('memberDelete.title')
       p.card-subtitle
         strong= member.name || member.id
-        |  (#{member.id}) will lose access until it joins again.
-      .alert.alert-warn Deleting a member does not revoke its identity; re-joining may recreate it.
+        = t('memberDelete.willLoseAccess', { id: member.id })
+      .alert.alert-warn= t('memberDelete.warning')
       form.form-stack(method='POST', action='')
         .form-actions
-          button.btn.btn-danger(type='submit', name='delete', value='delete') Remove member
-          a.btn.btn-ghost(href=nwurl + '#members') Cancel
+          button.btn.btn-danger(type='submit', name='delete', value='delete')= t('btn.removeMember')
+          a.btn.btn-ghost(href=nwurl + '#members')= t('btn.cancel')
 
   if errors
     .alert.alert-error

@@ -18,6 +18,29 @@ storage.initSync({ dir: storageDir });
 const NETWORK_OBJECT_VIEWS = new Set(['private', 'routes', 'ipAssignmentPools', 'dns', 'v4AssignMode', 'v6AssignMode']);
 const MEMBER_OBJECT_VIEWS = new Set(['ipAssignments']);
 
+// Translate a user-visible string when the i18n middleware is installed; fall
+// back to the key so the UI still renders when it is not.
+function msg(req, key, vars) {
+  return req.t ? req.t(key, vars) : key;
+}
+
+// Browser-tab titles for the generic network/member object views.
+function objectTitle(req, object, network) {
+  const keys = {
+    private: 'private.title',
+    routes: 'btn.routes',
+    ipAssignmentPools: 'btn.assignmentPools',
+    v4AssignMode: 'v4.title',
+    v6AssignMode: 'v6.title',
+    ipAssignments: 'page.ipAssignments'
+  };
+  if (object === 'dns') return 'DNS';
+  if (object === 'ipAssignments' && network && network.name) {
+    return msg(req, 'page.ipAssignmentsNamed', { name: network.name });
+  }
+  return keys[object] ? msg(req, keys[object]) : object;
+}
+
 async function get_network_with_members(nwid) {
   const [network, peers, members] = await Promise.all([
     zt.network_detail(nwid),
@@ -78,7 +101,7 @@ exports.index = async function(req, res) {
     res.render('index', {title: 'ztncui', navigate: navigate, zt_status});
   } catch (err) {
     res.render('index', {title: 'ztncui',
-                      navigate: navigate, error: 'ERROR getting ZT status: ' + err});
+                      navigate: navigate, error: msg(req, 'msg.ztStatusFailed', { err })});
   }
 };
 
@@ -91,9 +114,9 @@ exports.network_list = async function(req, res) {
 
   try {
     const networks = await zt.network_list();
-    res.render('networks', {title: 'Networks on this controller', navigate: navigate, networks: networks});
+    res.render('networks', {title: msg(req, 'page.networks'), navigate: navigate, networks: networks});
   } catch (err) {
-    res.render('networks', {title: 'Networks on this controller', navigate: navigate, error: 'Error retrieving list of networks on this controller: ' + err});
+    res.render('networks', {title: msg(req, 'page.networks'), navigate: navigate, error: msg(req, 'msg.networksListFailed', { err })});
   }
 };
 
@@ -113,9 +136,9 @@ exports.network_detail = async function(req, res) {
       get_network_with_members(req.params.nwid),
       zt.get_zt_address()
     ]);
-    res.render('network_detail', {title: 'Network ' + network.name, navigate: navigate, network: network, members: members, zt_address: zt_address});
+    res.render('network_detail', {title: msg(req, 'page.network', { name: network.name }), navigate: navigate, network: network, members: members, zt_address: zt_address});
   } catch (err) {
-    res.render('network_detail', {title: 'Detail for network', navigate: navigate, error: 'Error resolving detail for network ' + req.params.nwid + ': ' + err});
+    res.render('network_detail', {title: msg(req, 'page.networkDetail'), navigate: navigate, error: msg(req, 'msg.networkDetailFailed', { nwid: req.params.nwid, err })});
   }
 };
 
@@ -126,7 +149,7 @@ exports.network_create_get = function(req, res) {
       active: 'add_network',
     }
 
-  res.render('network_create', {title: 'Create network', navigate: navigate});
+  res.render('network_create', {title: msg(req, 'page.createNetwork'), navigate: navigate});
 };
 
 // Handle Network create on POST
@@ -136,7 +159,7 @@ exports.network_create_post = async function(req, res) {
       active: 'add_network',
     }
 
-  req.checkBody('name', 'Network name required').notEmpty();
+  req.checkBody('name', msg(req, 'msg.networkNameRequired')).notEmpty();
 
   req.sanitize('name').trim();
 
@@ -145,14 +168,14 @@ exports.network_create_post = async function(req, res) {
   let name = { name: req.body.name };
 
   if (errors) {
-    res.render('network_create', {title: 'Create Network', navigate: navigate, name: name, errors: errors});
+    res.render('network_create', {title: msg(req, 'page.createNetwork'), navigate: navigate, name: name, errors: errors});
     return;
   } else {
     try {
       const network = await zt.network_create(name);
       res.redirect('/controller/network/' + network.nwid);
     } catch (err) {
-      res.render('network_create', {title: 'Create Network', navigate: navigate, name: name, error: 'Error creating network ' + name.name});
+      res.render('network_create', {title: msg(req, 'page.createNetwork'), navigate: navigate, name: name, error: msg(req, 'msg.networkCreateFailed', { name: name.name })});
     }
   }
 };
@@ -167,10 +190,10 @@ exports.network_delete_get = async function(req, res) {
 
   try {
     const network = await zt.network_detail(req.params.nwid);
-    res.render('network_delete', {title: 'Delete network', navigate: navigate,
+    res.render('network_delete', {title: msg(req, 'page.deleteNetwork'), navigate: navigate,
                                     nwid: req.params.nwid, network: network});
   } catch (err) {
-    res.render('network_delete', {title: 'Delete network', navigate: navigate, error: 'Error resolving network ' + req.params.nwid + ': ' + err});
+    res.render('network_delete', {title: msg(req, 'page.deleteNetwork'), navigate: navigate, error: msg(req, 'msg.networkResolveFailed', { nwid: req.params.nwid, err })});
   }
 };
 
@@ -184,9 +207,9 @@ exports.network_delete_post = async function(req, res) {
 
   try {
     const network = await zt.network_delete(req.params.nwid);
-    res.render('network_delete', {title: 'Delete network', navigate: navigate, network: network});
+    res.render('network_delete', {title: msg(req, 'page.deleteNetwork'), navigate: navigate, network: network});
   } catch (err) {
-    res.render('network_delete', {title: 'Delete network', navigate: navigate, error: 'Error deleting network ' + req.params.nwid + ': ' + err});
+    res.render('network_delete', {title: msg(req, 'page.deleteNetwork'), navigate: navigate, error: msg(req, 'msg.networkDeleteFailed', { nwid: req.params.nwid, err })});
   }
 };
 
@@ -199,15 +222,15 @@ exports.network_object = async function(req, res) {
     }
 
   if (!NETWORK_OBJECT_VIEWS.has(req.params.object)) {
-    return res.status(404).render('error', { title: 'Not found', navigate, message: 'Not found', error: {} });
+    return res.status(404).render('error', { title: msg(req, 'page.notFound'), navigate, message: msg(req, 'msg.notFound'), error: {} });
   }
 
   try {
     const network = await zt.network_detail(req.params.nwid);
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render(req.params.object, {title: req.params.object, navigate: navigate, network: network});
+    res.render(req.params.object, {title: objectTitle(req, req.params.object, network), navigate: navigate, network: network});
   } catch (err) {
-    res.status(502).render('error', {title: 'Network error', navigate: navigate, message: 'Error resolving detail for network ' + req.params.nwid, error: {}});
+    res.status(502).render('error', {title: msg(req, 'page.networkError'), navigate: navigate, message: msg(req, 'msg.networkObjectResolveFailed', { nwid: req.params.nwid }), error: {}});
   }
 }
 
@@ -219,7 +242,7 @@ exports.name = async function(req, res) {
       whence: '/controller/networks'
     }
 
-  req.checkBody('name', 'Network name required').notEmpty();
+  req.checkBody('name', msg(req, 'msg.networkNameRequired')).notEmpty();
   req.sanitize('name').trim();
 
   const errors = req.validationErrors();
@@ -246,11 +269,11 @@ exports.ipAssignmentPools = async function(req, res) {
       whence: ''
     }
 
-  req.checkBody('ipRangeStart', 'IP range start required').notEmpty();
-  req.checkBody('ipRangeStart', 'IP range start needs a valid IPv4 or IPv6 address').isIP();
+  req.checkBody('ipRangeStart', msg(req, 'msg.ipRangeStartRequired')).notEmpty();
+  req.checkBody('ipRangeStart', msg(req, 'msg.ipRangeStartInvalid')).isIP();
   req.sanitize('ipRangeStart').trim();
-  req.checkBody('ipRangeEnd', 'IP range end required').notEmpty();
-  req.checkBody('ipRangeEnd', 'IP range end needs a valid IPv4 or IPv6 address').isIP();
+  req.checkBody('ipRangeEnd', msg(req, 'msg.ipRangeEndRequired')).notEmpty();
+  req.checkBody('ipRangeEnd', msg(req, 'msg.ipRangeEndInvalid')).isIP();
   req.sanitize('ipRangeEnd').trim();
 
   const errors = req.validationErrors();
@@ -265,17 +288,17 @@ exports.ipAssignmentPools = async function(req, res) {
     try {
       const network = await zt.network_detail(req.params.nwid);
       navigate.whence = '/controller/network/' + network.nwid;
-      res.render('ipAssignmentPools', {title: 'ipAssignmentPools', navigate: navigate, ipAssignmentPool: ipAssignmentPool, network: network, errors: errors});
+      res.render('ipAssignmentPools', {title: msg(req, 'btn.assignmentPools'), navigate: navigate, ipAssignmentPool: ipAssignmentPool, network: network, errors: errors});
     } catch (err) {
-      res.render('ipAssignmentPools', {title: 'ipAssignmentPools', navigate: navigate, error: 'Error resolving network detail for network ' + req.params.nwid + ': ' + err});
+      res.render('ipAssignmentPools', {title: msg(req, 'btn.assignmentPools'), navigate: navigate, error: msg(req, 'msg.poolsResolveFailed', { nwid: req.params.nwid, err })});
     }
   } else {
     try {
       const network = await zt.ipAssignmentPools(req.params.nwid, ipAssignmentPool, 'add');
       navigate.whence = '/controller/network/' + network.nwid;
-      res.render('ipAssignmentPools', {title: 'ipAssignmentPools', navigate: navigate, ipAssignmentPool: ipAssignmentPool, network: network});
+      res.render('ipAssignmentPools', {title: msg(req, 'btn.assignmentPools'), navigate: navigate, ipAssignmentPool: ipAssignmentPool, network: network});
     } catch (err) {
-      res.render('ipAssignmentPools', {title: 'ipAssignmentPools', navigate: navigate, error: 'Error applying IP Assignment Pools for network ' + req.params.nwid + ': ' + err});
+      res.render('ipAssignmentPools', {title: msg(req, 'btn.assignmentPools'), navigate: navigate, error: msg(req, 'msg.poolsApplyFailed', { nwid: req.params.nwid, err })});
     }
   }
 }
@@ -288,11 +311,11 @@ exports.routes = async function (req, res) {
       whence: ''
     }
 
-  req.checkBody('target', 'Target network is required').notEmpty();
+  req.checkBody('target', msg(req, 'msg.targetRequired')).notEmpty();
   req.sanitize('target').trim();
-  req.checkBody('target', 'Target network must be valid CIDR format')
+  req.checkBody('target', msg(req, 'msg.targetInvalidCidr'))
     .custom(value => isValidCidr(value));
-  req.checkBody('via', 'Gateway must be a valid IPv4 or IPv6 address').optional({ checkFalsy: true }).isIP();
+  req.checkBody('via', msg(req, 'msg.gatewayInvalid')).optional({ checkFalsy: true }).isIP();
   req.sanitize('via').trim();
   if (! req.body.via) {
     req.body.via = null;
@@ -310,17 +333,17 @@ exports.routes = async function (req, res) {
     try {
       const network = await zt.network_detail(req.params.nwid);
       navigate.whence = '/controller/network/' + network.nwid;
-      res.render('routes', {title: 'routes', navigate: navigate, route: route, network: network, errors: errors});
+      res.render('routes', {title: msg(req, 'btn.routes'), navigate: navigate, route: route, network: network, errors: errors});
     } catch (err) {
-      res.render('routes', {title: 'routes', navigate: navigate, error: 'Error resolving network detail'});
+      res.render('routes', {title: msg(req, 'btn.routes'), navigate: navigate, error: msg(req, 'msg.routeResolveFailed')});
     }
   } else {
     try {
       const network = await zt.routes(req.params.nwid, route, 'add');
       navigate.whence = '/controller/network/' + network.nwid;
-      res.render('routes', {title: 'routes', navigate: navigate, route: route, network: network});
+      res.render('routes', {title: msg(req, 'btn.routes'), navigate: navigate, route: route, network: network});
     } catch (err) {
-      res.render('routes', {title: 'routes', navigate: navigate, error: 'Error adding route for network ' + req.params.nwid + ': ' + err});
+      res.render('routes', {title: msg(req, 'btn.routes'), navigate: navigate, error: msg(req, 'msg.routeAddFailed', { nwid: req.params.nwid, err })});
     }
   }
 
@@ -344,9 +367,9 @@ exports.route_delete = async function (req, res) {
   try {
     const network = await zt.routes(req.params.nwid, route, 'delete');
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('routes', {title: 'routes', navigate: navigate, route: route, network: network});
+    res.render('routes', {title: msg(req, 'btn.routes'), navigate: navigate, route: route, network: network});
   } catch (err) {
-    res.render('routes', {title: 'routes', navigate: navigate, error: 'Error deleting route for network ' + req.params.nwid + ': ' + err});
+    res.render('routes', {title: msg(req, 'btn.routes'), navigate: navigate, error: msg(req, 'msg.routeDeleteFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -368,9 +391,9 @@ exports.ipAssignmentPool_delete = async function (req, res) {
   try {
     const network = await zt.ipAssignmentPools(req.params.nwid, ipAssignmentPool, 'delete');
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('ipAssignmentPools', {title: 'ipAssignmentPools', navigate: navigate, ipAssignmentPool: ipAssignmentPool, network: network});
+    res.render('ipAssignmentPools', {title: msg(req, 'btn.assignmentPools'), navigate: navigate, ipAssignmentPool: ipAssignmentPool, network: network});
   } catch (err) {
-    res.render('ipAssignmentPools', {title: 'ipAssignmentPools', navigate: navigate, error: 'Error deleting IP Assignment Pool for network ' + req.params.nwid + ': ' + err});
+    res.render('ipAssignmentPools', {title: msg(req, 'btn.assignmentPools'), navigate: navigate, error: msg(req, 'msg.poolDeleteFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -390,9 +413,9 @@ exports.private = async function (req, res) {
   try {
     const network = await zt.network_object(req.params.nwid, private);
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('private', {title: 'private', navigate: navigate, network: network});
+    res.render('private', {title: msg(req, 'private.title'), navigate: navigate, network: network});
   } catch (err) {
-    res.render('private', {title: 'private', navigate: navigate, error: 'Error applying private for network ' + req.params.nwid + ': ' + err});
+    res.render('private', {title: msg(req, 'private.title'), navigate: navigate, error: msg(req, 'msg.privateApplyFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -412,9 +435,9 @@ exports.v4AssignMode = async function (req, res) {
   try {
     const network = await zt.network_object(req.params.nwid, v4AssignMode);
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('v4AssignMode', {title: 'v4AssignMode', navigate: navigate, network: network});
+    res.render('v4AssignMode', {title: msg(req, 'v4.title'), navigate: navigate, network: network});
   } catch (err) {
-    res.render('v4AssignMode', {title: 'v4AssignMode', navigate: navigate, error: 'Error applying v4AssignMode for network ' + req.params.nwid + ': ' + err});
+    res.render('v4AssignMode', {title: msg(req, 'v4.title'), navigate: navigate, error: msg(req, 'msg.v4ApplyFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -439,9 +462,9 @@ exports.v6AssignMode = async function (req, res) {
   try {
     const network = await zt.network_object(req.params.nwid, v6AssignMode);
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('v6AssignMode', {title: 'v6AssignMode', navigate: navigate, network: network});
+    res.render('v6AssignMode', {title: msg(req, 'v6.title'), navigate: navigate, network: network});
   } catch (err) {
-    res.render('v6AssignMode', {title: 'v6AssignMode', navigate: navigate, error: 'Error applying v6AssignMode for network ' + req.params.nwid + ': ' + err});
+    res.render('v6AssignMode', {title: msg(req, 'v6.title'), navigate: navigate, error: msg(req, 'msg.v6ApplyFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -465,9 +488,9 @@ exports.dns = async function (req, res) {
   try {
     const network = await zt.network_object(req.params.nwid, dns);
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('dns', {title: 'dns', navigate: navigate, network: network});
+    res.render('dns', {title: 'DNS', navigate: navigate, network: network});
   } catch (err) {
-    res.render('dns', {title: 'dns', navigate: navigate, error: 'Error updating dns for network ' + req.params.nwid + ': ' + err});
+    res.render('dns', {title: 'DNS', navigate: navigate, error: msg(req, 'msg.dnsApplyFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -482,10 +505,10 @@ exports.member_detail = async function(req, res) {
   try {
     const {network, member} = await get_network_member(req.params.nwid, req.params.id);
     navigate.whence = '/controller/network/' + network.nwid + '#members';
-    res.render('member_detail', {title: 'Network member detail', navigate: navigate, network: network, member: member});
+    res.render('member_detail', {title: msg(req, 'page.memberDetail'), navigate: navigate, network: network, member: member});
   } catch (err) {
     console.error(err);
-    res.render('error', {title: req.params.object, navigate: navigate, error: 'Error resolving detail for member ' + req.params.id + ' of network ' + req.params.nwid + ': ' + err});
+    res.render('error', {title: msg(req, 'page.memberError'), navigate: navigate, error: msg(req, 'msg.memberDetailFailed', { id: req.params.id, nwid: req.params.nwid, err })});
   }
 };
 
@@ -498,15 +521,15 @@ exports.member_object = async function(req, res) {
     }
 
   if (!MEMBER_OBJECT_VIEWS.has(req.params.object)) {
-    return res.status(404).render('error', { title: 'Not found', navigate, message: 'Not found', error: {} });
+    return res.status(404).render('error', { title: msg(req, 'page.notFound'), navigate, message: msg(req, 'msg.notFound'), error: {} });
   }
 
   try {
     const {network, member} = await get_network_member(req.params.nwid, req.params.id);
     navigate.whence = '/controller/network/' + network.nwid + '#members';
-    res.render(req.params.object, {title: req.params.object, navigate: navigate, network: network, member: member});
+    res.render(req.params.object, {title: msg(req, 'page.ipAssignments'), navigate: navigate, network: network, member: member});
   } catch (err) {
-    res.status(502).render('error', {title: 'Member error', navigate: navigate, message: 'Error resolving detail for member ' + req.params.id, error: {}});
+    res.status(502).render('error', {title: msg(req, 'page.memberError'), navigate: navigate, message: msg(req, 'msg.memberResolveFailed', { id: req.params.id }), error: {}});
   }
 }
 
@@ -520,9 +543,9 @@ exports.easy_get = async function(req, res) {
 
   try {
     const network = await zt.network_detail(req.params.nwid);
-    res.render('network_easy', {title: 'Easy setup of network', navigate: navigate, network: network});
+    res.render('network_easy', {title: msg(req, 'page.easySetup'), navigate: navigate, network: network});
   } catch (err) {
-    res.render('network_easy', {title: 'Easy setup of network', navigate: navigate, error: 'Error resolving detail for network ' + req.params.nwid + ': ' + err});
+    res.render('network_easy', {title: msg(req, 'page.easySetup'), navigate: navigate, error: msg(req, 'msg.easyResolveFailed', { nwid: req.params.nwid, err })});
   }
 }
 
@@ -534,18 +557,18 @@ exports.easy_post = async function(req, res) {
       whence: '/controller/networks'
     }
 
-  req.checkBody('networkCIDR', 'Network address is required').notEmpty();
+  req.checkBody('networkCIDR', msg(req, 'msg.cidrRequired')).notEmpty();
   req.sanitize('networkCIDR').trim();
-  req.checkBody('networkCIDR', 'Network address must be in CIDR notation')
+  req.checkBody('networkCIDR', msg(req, 'msg.cidrInvalid'))
     .custom(value => isValidCidr(value, 32, 4));
-  req.checkBody('poolStart', 'Start of IP assignment pool is required')
+  req.checkBody('poolStart', msg(req, 'msg.poolStartRequired'))
     .notEmpty();
-  req.checkBody('poolStart', 'Start of IP assignment pool must be valid IPv4 address')
+  req.checkBody('poolStart', msg(req, 'msg.poolStartInvalid'))
     .isIP(4);
   req.sanitize('poolStart').trim();
-  req.checkBody('poolEnd', 'End of IP assignment pool is required')
+  req.checkBody('poolEnd', msg(req, 'msg.poolEndRequired'))
     .notEmpty();
-  req.checkBody('poolEnd', 'End of IP assignment pool must be valid IPv4 address')
+  req.checkBody('poolEnd', msg(req, 'msg.poolEndInvalid'))
     .isIP(4);
   req.sanitize('poolEnd').trim();
 
@@ -576,16 +599,16 @@ exports.easy_post = async function(req, res) {
         v4AssignMode: v4AssignMode
       };
 
-    res.render('network_easy', {title: 'Easy setup of network', navigate: navigate, network: network, errors: errors});
+    res.render('network_easy', {title: msg(req, 'page.easySetup'), navigate: navigate, network: network, errors: errors});
   } else {
     try {
       const network = await zt.network_easy_setup(req.params.nwid,
                                                   routes,
                                                   ipAssignmentPools,
                                                   v4AssignMode);
-      res.render('network_easy', {title: 'Easy setup of network', navigate: navigate, network: network, message: 'Network setup succeeded'});
+      res.render('network_easy', {title: msg(req, 'page.easySetup'), navigate: navigate, network: network, message: msg(req, 'msg.easySetupSucceeded')});
     } catch (err) {
-      res.render('network_easy', {title: 'Easy setup of network', navigate: navigate, error: 'Error resolving detail for network ' + req.params.nwid + ': ' + err});
+      res.render('network_easy', {title: msg(req, 'page.easySetup'), navigate: navigate, error: msg(req, 'msg.easyResolveFailed', { nwid: req.params.nwid, err })});
     }
   }
 }
@@ -600,7 +623,7 @@ exports.members = async function(req, res) {
 
   const has = (name) => Object.prototype.hasOwnProperty.call(req.body, name);
 
-  req.checkBody('id', 'Member ID is required').notEmpty();
+  req.checkBody('id', msg(req, 'msg.memberIdRequired')).notEmpty();
   req.sanitize('id').trim();
 
   let errors = req.validationErrors();
@@ -613,7 +636,7 @@ exports.members = async function(req, res) {
 
   try {
     if (has('auth')) {
-      req.checkBody('auth', 'Authorization state must be boolean').isBoolean();
+      req.checkBody('auth', msg(req, 'msg.authBoolean')).isBoolean();
       req.sanitize('auth').trim();
       errors = req.validationErrors();
       if (!errors) {
@@ -621,7 +644,7 @@ exports.members = async function(req, res) {
         await zt.member_object(req.params.nwid, id, { authorized });
       }
     } else if (has('activeBridge')) {
-      req.checkBody('activeBridge', 'activeBridge state must be boolean').isBoolean();
+      req.checkBody('activeBridge', msg(req, 'msg.activeBridgeBoolean')).isBoolean();
       req.sanitize('activeBridge').trim();
       errors = req.validationErrors();
       if (!errors) {
@@ -664,12 +687,11 @@ exports.member_delete = async function(req, res) {
     member.name = name || '';
 
     navigate.whence = '/controller/network/' + network.nwid;
-    res.render('member_delete', {title: 'Delete member from ' + network.name,
+    res.render('member_delete', {title: msg(req, 'page.deleteMemberNamed', { name: network.name }),
                                   navigate: navigate, network: network, member: member});
   } catch (err) {
-    res.render('member_delete', {title: 'Delete member from network', navigate: navigate,
-                    error: 'Error resolving detail for member ' + req.params.id
-                              + ' of network ' + req.params.nwid + ': ' + err});
+    res.render('member_delete', {title: msg(req, 'page.deleteMember'), navigate: navigate,
+                    error: msg(req, 'msg.memberDetailFailed', { id: req.params.id, nwid: req.params.nwid, err })});
   }
 }
 
@@ -692,12 +714,11 @@ exports.delete_ip = async function(req, res) {
       res.redirect('/controller/network/' + network.nwid + '/member/' +
                                                   member.id + '/ipAssignments');
     }
-    res.render('ipAssignments', {title: 'ipAssignments ' + network.name,
+    res.render('ipAssignments', {title: msg(req, 'page.ipAssignmentsNamed', { name: network.name }),
           navigate: navigate, index: req.params.index, network: network, member: member});
   } catch (err) {
-    res.render('ipAssignments', {title: 'ipAssignments', navigate: navigate,
-                    error: 'Error resolving detail for member ' + req.params.id
-                              + ' of network ' + req.params.nwid + ': ' + err});
+    res.render('ipAssignments', {title: msg(req, 'page.ipAssignments'), navigate: navigate,
+                    error: msg(req, 'msg.ipAssignmentResolveFailed', { id: req.params.id, nwid: req.params.nwid, err })});
   }
 }
 
@@ -715,9 +736,9 @@ exports.assign_ip = async function(req, res) {
     throw err;
   }
 
-  req.checkBody('ipAddress', 'IP address required').notEmpty();
-  req.checkBody('ipAddress', 'IP address must be a valid IPv4 or IPv6 address').isIP();
-  req.checkBody('ipAddress', 'IP address must fall within a managed route')
+  req.checkBody('ipAddress', msg(req, 'msg.ipRequired')).notEmpty();
+  req.checkBody('ipAddress', msg(req, 'msg.ipInvalid')).isIP();
+  req.checkBody('ipAddress', msg(req, 'msg.ipNotInRoute'))
     .custom(value => {
       if (!Array.isArray(network.routes)) return false;
       return network.routes.some(item => ipInCidr(value, item.target));
@@ -738,12 +759,11 @@ exports.assign_ip = async function(req, res) {
 
     member.name = (await storage.getItem(member.id)) || '';
 
-    res.render('ipAssignments', {title: 'ipAssignments', navigate: navigate,
+    res.render('ipAssignments', {title: msg(req, 'page.ipAssignments'), navigate: navigate,
                   ipAssignment: ipAssignment, network: network, member: member,
                                                                errors: errors});
   } catch (err) {
-    res.render('ipAssignments', {title: 'ipAssignments', navigate: navigate,
-                    error: 'Error resolving detail for member ' + req.params.id
-                              + ' of network ' + req.params.nwid + ': ' + err});
+    res.render('ipAssignments', {title: msg(req, 'page.ipAssignments'), navigate: navigate,
+                    error: msg(req, 'msg.ipAssignmentResolveFailed', { id: req.params.id, nwid: req.params.nwid, err })});
   }
 }

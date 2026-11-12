@@ -9,76 +9,76 @@ block net_content
   - const nwurl = '/controller/network/' + network.nwid
 
   .toolbar
-    a.btn.btn-sm(href=nwurl + '/private')= network.private ? 'Private network' : 'Public network'
-    a.btn.btn-sm(href=nwurl + '/easy') Easy setup
-    a.btn.btn-sm(href=nwurl + '/routes') Routes
-    a.btn.btn-sm(href=nwurl + '/ipAssignmentPools') Assignment pools
-    a.btn.btn-sm(href=nwurl + '/v4AssignMode') IPv4 mode
-    a.btn.btn-sm(href=nwurl + '/v6AssignMode') IPv6 mode
+    a.btn.btn-sm(href=nwurl + '/private')= network.private ? t('private.privateLabel') : t('private.publicLabel')
+    a.btn.btn-sm(href=nwurl + '/easy')= t('btn.easySetup')
+    a.btn.btn-sm(href=nwurl + '/routes')= t('btn.routes')
+    a.btn.btn-sm(href=nwurl + '/ipAssignmentPools')= t('btn.assignmentPools')
+    a.btn.btn-sm(href=nwurl + '/v4AssignMode')= t('btn.ipv4Mode')
+    a.btn.btn-sm(href=nwurl + '/v6AssignMode')= t('btn.ipv6Mode')
     a.btn.btn-sm(href=nwurl + '/dns') DNS
 
   if members !== undefined
     .card.table-card
       .card-head
         div
-          h2 Members
-          p.card-subtitle #{members.length} device#{members.length === 1 ? '' : 's'} on this network
-        a.btn.btn-sm.btn-ghost(href='') Refresh
+          h2= t('members.title')
+          p.card-subtitle= t(members.length === 1 ? 'members.countOne' : 'members.countOther', { count: members.length })
+        a.btn.btn-sm.btn-ghost(href='')= t('btn.refresh')
       .table-wrap
         table.data-table.members-table
           thead
             tr
-              th Member
+              th= t('field.member')
               th.mono ID
-              th Authorized
-              th Active bridge
-              th IP assignments
-              th Status
+              th= t('field.authorized')
+              th= t('field.activeBridge')
+              th= t('field.ipAssignments')
+              th= t('field.status')
           tbody
             each member in members
               - const peer = member.peer
               - const online = peer && typeof peer.latency === 'number' && peer.latency !== -1
               - const memberUrl = nwurl + '/member/' + member.id
               tr
-                td(data-label='Member')
+                td(data-label=t('field.member'))
                   form.inline-form(method='POST', action=nwurl + '/members')
                     input(type='hidden', name='id', value=member.id)
-                    input.input.input-sm(type='text', name='name', value=member.name, maxlength='128', aria-label='Member name for ' + member.id)
-                    button.btn.btn-sm.btn-ghost(type='submit') Save
-                  a.text-danger(href=memberUrl + '/delete', data-confirm='Remove this member from the network?') Remove
+                    input.input.input-sm(type='text', name='name', value=member.name, maxlength='128', aria-label=t('field.member') + ' ' + member.id)
+                    button.btn.btn-sm.btn-ghost(type='submit')= t('btn.save')
+                  a.text-danger(href=memberUrl + '/delete', data-confirm=t('confirm.removeMember'))= t('btn.remove')
                 td.mono(data-label='ID')
                   a(href=memberUrl)= member.id
-                td(data-label='Authorized')
+                td(data-label=t('field.authorized'))
                   form.inline-form(method='POST', action=nwurl + '/members')
                     input(type='hidden', name='id', value=member.id)
-                    select.input.input-sm(name='auth', data-autosubmit, aria-label='Authorization for ' + member.id)
-                      option(value='true', selected=member.authorized ? true : false) Authorized
-                      option(value='false', selected=!member.authorized) Not authorized
-                td(data-label='Active bridge')
+                    select.input.input-sm(name='auth', data-autosubmit, aria-label=t('field.authorized') + ' ' + member.id)
+                      option(value='true', selected=member.authorized ? true : false)= t('member.authorized')
+                      option(value='false', selected=!member.authorized)= t('member.notAuthorized')
+                td(data-label=t('field.activeBridge'))
                   form.inline-form(method='POST', action=nwurl + '/members')
                     input(type='hidden', name='id', value=member.id)
-                    select.input.input-sm(name='activeBridge', data-autosubmit, aria-label='Active bridge for ' + member.id)
-                      option(value='true', selected=member.activeBridge ? true : false) Enabled
-                      option(value='false', selected=!member.activeBridge) Disabled
-                td(data-label='IP assignments')
+                    select.input.input-sm(name='activeBridge', data-autosubmit, aria-label=t('field.activeBridge') + ' ' + member.id)
+                      option(value='true', selected=member.activeBridge ? true : false)= t('member.enabled')
+                      option(value='false', selected=!member.activeBridge)= t('member.disabled')
+                td(data-label=t('field.ipAssignments'))
                   if member.ipAssignments.length
                     each ipAssignment in member.ipAssignments
                       a.chip(href=memberUrl + '/ipAssignments')= ipAssignment
                   else
-                    a.chip.chip-muted(href=memberUrl + '/ipAssignments') Assign IP
-                td(data-label='Status')
+                    a.chip.chip-muted(href=memberUrl + '/ipAssignments')= t('btn.assignIp')
+                td(data-label=t('field.status'))
                   if member.id == zt_address
-                    span.badge.badge-ok Controller
+                    span.badge.badge-ok= t('status.controller')
                   else if online
-                    span.badge.badge-ok Online
+                    span.badge.badge-ok= t('status.online')
                     if peer.version
                       span.peer-meta v#{peer.version}
                   else if peer
-                    span.badge.badge-warn Relay / offline
+                    span.badge.badge-warn= t('status.relayOffline')
                     if peer.latency
                       span.peer-meta #{peer.latency} ms
                   else
-                    span.badge.badge-muted Offline
+                    span.badge.badge-muted= t('status.offline')
                   if peer && peer.paths
                     each path in peer.paths
                       if path.preferred
@@ -86,12 +86,12 @@ block net_content
                         - break
       if members.length === 0
         .empty-inline
-          p No members yet. Invite a device to join #[code= network.nwid].
+          p #{t('members.emptyBefore')}#[code= network.nwid]#{t('members.emptyAfter')}
 
   .card.detail-card
     .card-head
-      h2 Network properties
-      p.card-subtitle Click an editable property to open its settings page.
+      h2= t('networkDetail.properties')
+      p.card-subtitle= t('networkDetail.propertiesHint')
     dl.detail-list
       each value, key in network
         - const editable = ['dns', 'ipAssignmentPools', 'private', 'routes', 'v4AssignMode', 'v6AssignMode'].includes(key)
@@ -104,4 +104,4 @@ block net_content
           dd
             +json_value(value)
 
-  a.btn.btn-ghost(href='/controller/networks') All networks
+  a.btn.btn-ghost(href='/controller/networks')= t('btn.allNetworks')

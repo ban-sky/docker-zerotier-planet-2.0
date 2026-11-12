@@ -7,15 +7,15 @@ extends network_layout
 
 block net_content
   .card
-    h2 Not available in this UI
+    h2= t('notImplemented.title')
     p
-      | Editing 
+      = t('notImplemented.editingBefore')
       strong= title
-      |  is not implemented here.
+      = t('notImplemented.editingAfter')
     if member !== undefined
       p
-        a(href='/controller/network/' + network.nwid + '/member/' + (member.id || member.address)) Open member details
+        a(href='/controller/network/' + network.nwid + '/member/' + (member.id || member.address))= t('notImplemented.openMember')
     p
-      | Most member settings are available on the 
-      a(href='/controller/network/' + network.nwid + '#members') members page
-      | .
+      = t('notImplemented.settingsBefore')
+      a(href='/controller/network/' + network.nwid + '#members')= t('notImplemented.membersPage')
+      = t('notImplemented.settingsAfter')

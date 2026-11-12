@@ -10,19 +10,19 @@ block net_content
   - const mode = network.v4AssignMode || {}
 
   .card.form-card
-    h2 IPv4 assignment
-    p.card-subtitle Automatically assign IPv4 addresses from the configured assignment pools.
+    h2= t('v4.title')
+    p.card-subtitle= t('v4.subtitle')
 
     form.form-stack(method='POST', action='')
       label.check-row
         input(type='checkbox', name='zt', value='true', checked=mode.zt ? true : false, data-autosubmit)
         span
-          strong Auto-assign from IP assignment pools
-          span.check-hint Managed by the controller; members receive an address on join.
+          strong= t('v4.autoAssign')
+          span.check-hint= t('v4.autoAssignHint')
 
     .form-actions
-      button.btn.btn-primary(type='submit') Save
-      a.btn.btn-ghost(href=nwurl) Cancel
+      button.btn.btn-primary(type='submit')= t('btn.save')
+      a.btn.btn-ghost(href=nwurl)= t('btn.cancel')
 
   if errors
     .alert.alert-error

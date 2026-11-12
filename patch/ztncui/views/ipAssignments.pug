@@ -15,7 +15,7 @@ block net_content
       div
         h2= member.name || member.id
         p.card-subtitle.mono= member.id
-      a.btn.btn-sm.btn-ghost(href=nwurl + '#members') Members
+      a.btn.btn-sm.btn-ghost(href=nwurl + '#members')= t('members.title')
 
     form.form-stack(method='POST', action='')
       if assignments.length
@@ -23,36 +23,36 @@ block net_content
           each ipAssignment, index in assignments
             li
               span.mono= ipAssignment
-              a.btn.btn-sm.btn-danger(href=memberPath + '/ipAssignments/' + index + '/delete', data-confirm='Remove this IP assignment?') Remove
+              a.btn.btn-sm.btn-danger(href=memberPath + '/ipAssignments/' + index + '/delete', data-confirm=t('confirm.removeIpAssignment'))= t('btn.remove')
       else
-        p.empty-inline No static IP assignments.
+        p.empty-inline= t('ipAssignments.empty')
 
       .field
-        label(for='ipAddress') Add IP address
+        label(for='ipAddress')= t('field.addIpAddress')
         .input-row
           input#ipAddress(type='text', name='ipAddress', placeholder='10.42.0.50', value=(typeof ipAssignment === 'undefined' ? '' : ipAssignment.ipAddress))
-          button.btn.btn-primary(type='submit') Assign
-      p.field-hint The address must fall inside a managed route of this network.
+          button.btn.btn-primary(type='submit')= t('btn.assign')
+      p.field-hint= t('ipAssignments.hint')
 
   .card.table-card
     .card-head
-      h2 Managed routes
-      a.btn.btn-sm.btn-ghost(href=nwurl + '/routes') Edit
+      h2= t('ipAssignments.managedRoutes')
+      a.btn.btn-sm.btn-ghost(href=nwurl + '/routes')= t('btn.edit')
     .table-wrap
       table.data-table
         thead
           tr
-            th Target
-            th Gateway
+            th= t('field.target')
+            th= t('field.gateway')
         tbody
           each route in (network.routes || [])
             tr
-              td.mono(data-label='Target')= route.target
-              td.mono(data-label='Gateway')= route.via || '—'
+              td.mono(data-label=t('field.target'))= route.target
+              td.mono(data-label=t('field.gateway'))= route.via || '—'
           else
             tr
               td(colspan='2')
-                .empty-inline No managed routes.
+                .empty-inline= t('ipAssignments.noRoutes')
 
   if errors
     .alert.alert-error

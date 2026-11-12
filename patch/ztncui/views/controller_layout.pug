@@ -6,10 +6,10 @@
 extends head_layout
 
 block nav_items
-  +nav_item('controller_home', 'Overview', '/controller')
-  +nav_item('networks', 'Networks', '/controller/networks')
-  +nav_item('add_network', 'New network', '/controller/network/create')
-  +nav_item('users', 'Users', '/users')
+  +nav_item('controller_home', t('nav.overview'), '/controller')
+  +nav_item('networks', t('nav.networks'), '/controller/networks')
+  +nav_item('add_network', t('nav.newNetwork'), '/controller/network/create')
+  +nav_item('users', t('nav.users'), '/users')
 
 block body_content
   .container.page

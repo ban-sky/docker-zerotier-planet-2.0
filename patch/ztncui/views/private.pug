@@ -9,25 +9,25 @@ block net_content
   - const nwurl = '/controller/network/' + network.nwid
 
   .card.form-card
-    h2 Access control
-    p.card-subtitle When enabled, only members you authorise can communicate on this network.
+    h2= t('private.title')
+    p.card-subtitle= t('private.subtitle')
 
     form.form-stack(method='POST', action='')
       label.check-row
         input(type='checkbox', name='private', value='true', checked=network.private ? true : false, data-autosubmit)
         span
-          strong Private network
-          span.check-hint Disabling this lets every member talk to every other member without authorisation.
+          strong= t('private.privateLabel')
+          span.check-hint= t('private.privateHint')
       noscript
-        button.btn.btn-primary(type='submit') Save
+        button.btn.btn-primary(type='submit')= t('btn.save')
       .form-actions
-        button.btn.btn-primary(type='submit') Save
-        a.btn.btn-ghost(href=nwurl) Cancel
+        button.btn.btn-primary(type='submit')= t('btn.save')
+        a.btn.btn-ghost(href=nwurl)= t('btn.cancel')
 
     if !network.private
       .alert.alert-warn
-        strong Public network.
-        |  Access control is off; member authorisation no longer restricts traffic.
+        strong= t('private.publicAlertTitle')
+        = t('private.publicAlertBody')
 
   if errors
     .alert.alert-error
