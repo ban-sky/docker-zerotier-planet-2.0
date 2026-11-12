@@ -541,6 +541,7 @@ jobs:
             dist/SHA256SUMS
             dist/SOURCE
             dist/LOAD-*.txt
+            dist/1panel-scheduled-update.sh
 
       - name: Publish the multi-arch image to GHCR
         env:
