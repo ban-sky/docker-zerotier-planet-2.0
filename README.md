@@ -11,6 +11,23 @@
 > 场景**不得**使用本镜像中的 controller。详见 [NOTICE](NOTICE) 与
 > `/usr/share/licenses/zerotier/`。
 
+## 界面预览
+
+管理界面（ztncui 0.9.0）重做为响应式卡片布局：移除了 Bootstrap 3 与 jQuery，
+CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。
+
+| 控制器概览 | 网络列表 |
+| --- | --- |
+| ![控制器概览](docs/screenshots/ztncui-overview.png) | ![网络列表](docs/screenshots/ztncui-networks.png) |
+
+![网络详情：成员授权、桥接、IP 分配与网络属性](docs/screenshots/ztncui-network-detail.png)
+
+手机端（≤720px）表格自动转换为带字段标签的卡片，导航折叠为菜单：
+
+| 网络列表（手机） | 网络详情（手机） |
+| --- | --- |
+| ![手机端网络列表](docs/screenshots/ztncui-mobile-networks.png) | ![手机端网络详情](docs/screenshots/ztncui-mobile-network-detail.png) |
+
 ## 相比上游的改动
 
 ### 安全（对应 issue #215 的五项）

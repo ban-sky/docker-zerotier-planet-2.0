@@ -15,6 +15,25 @@ upstream project.
 > non-profits/charities and paid services **must not** use the bundled
 > controller. See [NOTICE](NOTICE) and `/usr/share/licenses/zerotier/`.
 
+## Screenshots
+
+The admin UI (ztncui 0.9.0) was rebuilt as a responsive card layout: Bootstrap 3
+and jQuery are gone, the CSP only allows `'self'`, and member authorization /
+bridging use explicit dropdowns.
+
+| Controller overview | Networks |
+| --- | --- |
+| ![Controller overview](docs/screenshots/ztncui-overview.png) | ![Networks](docs/screenshots/ztncui-networks.png) |
+
+![Network detail: member authorization, bridging, IP assignments and network properties](docs/screenshots/ztncui-network-detail.png)
+
+On phones (≤720px) tables turn into cards with field labels and the navigation
+collapses into a menu:
+
+| Networks (phone) | Network detail (phone) |
+| --- | --- |
+| ![Mobile networks](docs/screenshots/ztncui-mobile-networks.png) | ![Mobile network detail](docs/screenshots/ztncui-mobile-network-detail.png) |
+
 ## Changes from upstream
 
 ### Security (the five findings in issue #215)
