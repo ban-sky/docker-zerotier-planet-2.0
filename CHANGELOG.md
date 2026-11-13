@@ -2,6 +2,22 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.4.3] - 2026-11-13
+
+### 变更
+
+- **默认镜像改为 Docker Hub**：`docker-compose.yml`、`deploy.sh`、`build.sh`、
+  `scripts/migrate-from-upstream.sh`、`scripts/1panel-scheduled-update.sh` 与 1Panel 应用包
+  的默认镜像统一为 `docker.io/lonelyx/zerotier-planet:<版本号>`；GHCR 仍同步发布，作为备选。
+- Release 正文的镜像表与「加载并运行」示例改为先列 Docker Hub（未配置 `DOCKERHUB_TOKEN`
+  时自动退回 GHCR）。
+- 新增 `1panel/apps/zerotier-planet/2.4.3/`（镜像指向 Docker Hub），2.1.0–2.4.2 目录保留。
+
+### 文档
+
+- README（中/英）镜像表改为「Docker Hub 默认 / GHCR 备选」，拉取、部署、迁移示例同步换成
+  `docker.io/lonelyx/zerotier-planet:2.4.3`；1Panel 应用文档补充版本与镜像来源说明。
+
 ## [2.4.2] - 2026-11-13
 
 ### 变更

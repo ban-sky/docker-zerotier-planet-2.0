@@ -27,7 +27,7 @@ set -Eeuo pipefail
 
 APP_KEY=zerotier-planet
 REPO="ban-sky/zerotier-planet-2.0"
-IMAGE="ghcr.io/ban-sky/zerotier-planet"
+IMAGE="${IMAGE:-docker.io/lonelyx/zerotier-planet}"
 DEFAULT_PANEL_DIR=/opt/1panel
 DEFAULT_BRANCH=main
 

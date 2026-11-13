@@ -9,7 +9,7 @@
 # GPLv3 - see LICENSE.
 set -Eeuo pipefail
 
-IMAGE="${IMAGE:-ghcr.io/ban-sky/zerotier-planet:2.4.2}"
+IMAGE="${IMAGE:-docker.io/lonelyx/zerotier-planet:2.4.3}"
 ZT_VERSION="${ZT_VERSION:-1.16.2}"
 ZT_COMMIT="${ZT_COMMIT:-}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"

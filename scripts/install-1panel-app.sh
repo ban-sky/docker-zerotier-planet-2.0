@@ -22,7 +22,7 @@ usage() {
 
   --panel-dir DIR        1Panel 安装目录，默认 /opt/1panel
   --download VERSION     从 GitHub Releases 下载 1panel-app-VERSION.tar.gz
-                         （例如 --download v2.4.2 或 2.4.2），而不是使用仓库内的文件
+                         （例如 --download v2.4.3 或 2.4.3），而不是使用仓库内的文件
   --keep-old             保留上一次安装的备份（默认保留，仅提示路径）
   -h, --help             显示帮助
 

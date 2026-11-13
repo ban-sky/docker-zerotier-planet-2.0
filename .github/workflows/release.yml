@@ -471,8 +471,16 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
+          DOCKERHUB_USERNAME: ${{ env.DOCKERHUB_USERNAME }}
         run: |
           set -euo pipefail
+          # Docker Hub is the default registry; fall back to GHCR when it is not configured.
+          if [ -n "${DOCKERHUB_USERNAME:-}" ]; then
+            DEFAULT_IMAGE="docker.io/${DOCKERHUB_USERNAME}/zerotier-planet"
+          else
+            DEFAULT_IMAGE="${IMAGE}"
+          fi
+          export DEFAULT_IMAGE
           {
             echo "# zerotier-planet-2.0 — ${VERSION}"
             echo
@@ -514,7 +522,7 @@ jobs:
             echo "  -v \"\$PWD/data/config:/app/config\" \\"
             echo "  -v \"\$PWD/data/dist:/app/dist\" \\"
             echo "  -v \"\$PWD/data/one:/var/lib/zerotier-one\" \\"
-            echo "  ${IMAGE}:${TAG}"
+            echo "  ${DEFAULT_IMAGE}:${TAG}"
             echo '```'
             echo
             echo "## Images"

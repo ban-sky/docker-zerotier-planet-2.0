@@ -4,10 +4,10 @@
 本项目是 [xubiaolin/docker-zerotier-planet](https://github.com/xubiaolin/docker-zerotier-planet)
 的 **2.0** 维护分支，已升级到 **ZeroTier One 1.16.2**（截至 2026-11-06 核查，上游最新稳定版仍是 1.16.2），并针对上游 issue 中的安全问题做了系统性加固。
 
-> **2.4.2 更名说明**
-> 项目名由 `docker-zerotier-planet-2.0` 改为 `zerotier-planet-2.0`；镜像名同步改为
-> `ghcr.io/ban-sky/zerotier-planet` 与 `lonelyx/zerotier-planet`，tag 与版本号一致、**不带 `v`**
-> （git tag 与 Release 仍是 `v2.4.2`）。旧仓库地址与旧镜像名继续可用。
+> **2.4.3 起默认使用 Docker Hub 镜像**
+> 项目名是 `zerotier-planet-2.0`（2.4.2 起由 `docker-zerotier-planet-2.0` 更名而来）；镜像同时发布到
+> `docker.io/lonelyx/zerotier-planet`（**默认**）与 `ghcr.io/ban-sky/zerotier-planet`（备选），
+> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.4.3`）。旧仓库地址与旧镜像名继续可用。
 
 > **许可证提醒（重要）**
 > ZeroTier 1.16 起把 controller 移到了 `nonfree/`，采用 *ZeroTier SOURCE-AVAILABLE
@@ -95,10 +95,10 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。截图取�
 - **1Panel 计划任务脚本**：`scripts/1panel-scheduled-update.sh` 可挂到面板计划任务，
   按周期更新应用商店包并重启已安装实例。
 
-### 部署集成（2.4.2）
+### 部署集成（2.4.3）
 
 - 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
-  可视化启停与升级；镜像 tag 固定版本号（如 `2.4.2`，不带 `v`），方便面板比对版本。
+  可视化启停与升级；镜像 tag 固定版本号（如 `2.4.3`，不带 `v`），方便面板比对版本。
 - 应用包、`docker save` 归档与计划任务脚本一起发布在 Release，`SHA256SUMS` 覆盖全部附件。
 
 ## 快速开始
@@ -132,7 +132,7 @@ cd zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) 里的
 > `zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull ghcr.io/ban-sky/zerotier-planet:2.4.2`。
+> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.4.3`。
 
 ### 方式二：Compose
 
@@ -161,7 +161,7 @@ sudo ./scripts/install-1panel-app.sh
 不想 clone 也可以用 Release 附件：
 
 ```bash
-sudo tar -xzf 1panel-app-2.4.2.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.4.3.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
@@ -187,7 +187,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 
 > 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
 > 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
-> 应用包里的镜像 tag 固定为 `2.4.2`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
+> 应用包里的镜像 tag 固定为 `2.4.3`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
 
 #### 计划任务：自动跟进最新版本
 
@@ -216,7 +216,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # 只更新应用包，不动运行中的容器；或固定到某个版本
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.2
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.3
 ```
 
 在面板里配置：**计划任务 → 创建计划任务 → 任务类型 `Shell 脚本`**，执行周期按需
@@ -468,8 +468,8 @@ node tests/origin.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.4.2 -m "zerotier-planet-2.0"
-git push origin v2.4.2
+git tag -a v2.4.3 -m "zerotier-planet-2.0"
+git push origin v2.4.3
 ```
 
 推送标签后，Actions 会依次执行：
@@ -487,54 +487,54 @@ git push origin v2.4.2
 Release 附件：
 
 ```text
-zerotier-planet-2.0-2.4.2-amd64.tar.gz    # docker save 归档（gzip）
-zerotier-planet-2.0-2.4.2-arm64.tar.gz    # 仅当勾选 include_arm64
-1panel-app-2.4.2.tar.gz                          # 1Panel 本地应用包
+zerotier-planet-2.0-2.4.3-amd64.tar.gz    # docker save 归档（gzip）
+zerotier-planet-2.0-2.4.3-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-2.4.3.tar.gz                          # 1Panel 本地应用包
 1panel-scheduled-update.sh                          # 计划任务：自动更新应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-2.4.2.txt                            # 加载与运行说明
+LOAD-amd64-2.4.3.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < zerotier-planet-2.0-2.4.2-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.4.3-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `ghcr.io/ban-sky/zerotier-planet:2.4.2`，可以直接用
-`docker-compose.yml` 里的 `image:` 字段引用。
+归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.4.3`，可以直接用
+`docker-compose.yml` 里的 `image:` 字段引用（换一台机器时也可以 `docker tag` 成同一个名字）。
 
 ### 镜像地址
 
 每次发布都会同时推送到 **GHCR** 与 **Docker Hub**，两边内容完全一致（同一个多架构
 manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull` 不需要登录：
 
-| Registry | 地址 |
-| --- | --- |
-| GHCR（GitHub） | `ghcr.io/ban-sky/zerotier-planet` |
-| Docker Hub | `docker.io/lonelyx/zerotier-planet` |
+| Registry | 地址 | 说明 |
+| --- | --- | --- |
+| Docker Hub | `docker.io/lonelyx/zerotier-planet` | **默认**，脚本、Compose 与 1Panel 应用包都用它 |
+| GHCR（GitHub） | `ghcr.io/ban-sky/zerotier-planet` | 备选，内容与 Docker Hub 完全相同 |
 
 ```bash
-# GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.2
+# 默认：Docker Hub
+docker pull docker.io/lonelyx/zerotier-planet:2.4.3
 
-# Docker Hub
-docker pull lonelyx/zerotier-planet:2.4.2
+# 备选：GHCR（拉不动 Docker Hub 时用）
+docker pull ghcr.io/ban-sky/zerotier-planet:2.4.3
 ```
 
-tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.4.2`），镜像 tag 不带 `v`（`2.4.2`）。**
+tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.4.3`），镜像 tag 不带 `v`（`2.4.3`）。**
 
 
 
 | tag | 内容 | 何时更新 |
 | --- | --- | --- |
-| `2.4.2` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `2.4.3` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
 | `latest` | 最近一次发布 | 同上 |
 | `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
 
-当前 `2.4.2` 的 manifest（两边一致）：
+当前 `2.4.3` 的 manifest（两边一致）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -556,17 +556,17 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 > Docker Hub 免费账号有拉取限流：匿名 100 次 / 6 小时，登录后 200 次 / 6 小时。
 > 生产机上 `docker login` 可以避免共享 IP 被限流。
 
-拉取并部署（GHCR 或 Docker Hub 任选其一，镜像相同）：
+拉取并部署（默认走 Docker Hub，镜像与 GHCR 完全相同）：
 
 ```bash
-# GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.2
+# 默认：Docker Hub
+docker pull docker.io/lonelyx/zerotier-planet:2.4.3
 
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.2 \
+sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.4.3 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
-# Docker Hub（镜像源更快时可选）
-sudo IMAGE=lonelyx/zerotier-planet:2.4.2 \
+# 备选：GHCR
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.3 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -575,7 +575,7 @@ sudo IMAGE=lonelyx/zerotier-planet:2.4.2 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/zerotier-planet:2.4.2 \
+  --image docker.io/lonelyx/zerotier-planet:2.4.3 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 

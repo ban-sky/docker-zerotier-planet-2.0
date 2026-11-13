@@ -7,11 +7,12 @@ upgraded to **ZeroTier One 1.16.2** (verified 2026-11-06: this is still the late
 upstream stable release) with fixes for the security issues reported against the
 upstream project.
 
-> **Rename in 2.4.2**
-> The project is now `zerotier-planet-2.0` (was `docker-zerotier-planet-2.0`), and the images
-> are `ghcr.io/ban-sky/zerotier-planet` / `lonelyx/zerotier-planet` with tags that match the
-> version **without a leading `v`** (git tags and Releases still use `v2.4.2`). The old
-> repository URL and the old image names keep working.
+> **Docker Hub is the default image since 2.4.3**
+> The project is `zerotier-planet-2.0` (renamed from `docker-zerotier-planet-2.0` in 2.4.2).
+> Images are published to `docker.io/lonelyx/zerotier-planet` (**default**) and
+> `ghcr.io/ban-sky/zerotier-planet` (alternative), with tags that match the version
+> **without a leading `v`** (git tags and Releases still use `v2.4.3`). The old repository
+> URL and the old image names keep working.
 
 > **License warning (important)**
 > Since ZeroTier 1.16 the controller lives in `nonfree/` and is covered by the
@@ -105,11 +106,11 @@ collapses into a menu:
 - **1Panel cron helper.** `scripts/1panel-scheduled-update.sh` can be scheduled as a
   1Panel cron job to refresh the app package and restart the installed instance.
 
-### Deployment integrations (2.4.2)
+### Deployment integrations (2.4.3)
 
 - Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
   panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
-  release version (e.g. `2.4.2`, no leading `v`) so the panel can detect updates.
+  release version (e.g. `2.4.3`, no leading `v`) so the panel can detect updates.
 - The app package, the `docker save` archives and the cron helper are published together in
   every Release, with `SHA256SUMS` covering all of them.
 
@@ -147,7 +148,7 @@ directory.
 > `zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `ghcr.io/ban-sky/zerotier-planet:2.4.2` directly.
+> `docker.io/lonelyx/zerotier-planet:2.4.3` directly.
 
 ### Option 2: Compose
 
@@ -176,7 +177,7 @@ sudo ./scripts/install-1panel-app.sh
 No checkout? Use the Release asset instead:
 
 ```bash
-sudo tar -xzf 1panel-app-2.4.2.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.4.3.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
@@ -204,7 +205,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 > The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
 > the **professional edition** "custom repository" can point at the `1panel/apps`
 > directory of this repository as well. The image tag inside the package is pinned
-> to `2.4.2` (no leading `v`, never `latest`) so the panel can detect version updates.
+> to `2.4.3` (no leading `v`, never `latest`) so the panel can detect version updates.
 
 #### Cron job: follow new releases automatically
 
@@ -234,7 +235,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # package only, or pin a version
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.2
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.3
 ```
 
 In the panel: **Cron job → Create → Task type `Shell script`**, run it on whatever
@@ -503,8 +504,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.4.2 -m "zerotier-planet-2.0"
-git push origin v2.4.2
+git tag -a v2.4.3 -m "zerotier-planet-2.0"
+git push origin v2.4.3
 ```
 
 The tag runs four jobs:
@@ -525,24 +526,24 @@ The tag runs four jobs:
 Release assets:
 
 ```text
-zerotier-planet-2.0-2.4.2-amd64.tar.gz    # gzipped docker save archive
-zerotier-planet-2.0-2.4.2-arm64.tar.gz    # only when include_arm64 is set
-1panel-app-2.4.2.tar.gz                          # 1Panel app package
+zerotier-planet-2.0-2.4.3-amd64.tar.gz    # gzipped docker save archive
+zerotier-planet-2.0-2.4.3-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-2.4.3.tar.gz                          # 1Panel app package
 1panel-scheduled-update.sh                          # cron helper: update the app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-2.4.2.txt                            # load and run instructions
+LOAD-amd64-2.4.3.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < zerotier-planet-2.0-2.4.2-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.4.3-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`ghcr.io/ban-sky/zerotier-planet:2.4.2`, so the `image:` field in
+`docker.io/lonelyx/zerotier-planet:2.4.3`, so the `image:` field in
 `docker-compose.yml` can point straight at it.
 
 ### Image registries
@@ -551,28 +552,28 @@ Every release is published to both **GHCR** and **Docker Hub**. They hold the sa
 multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
 `docker pull` needs no login:
 
-| Registry | Reference |
-| --- | --- |
-| GHCR (GitHub) | `ghcr.io/ban-sky/zerotier-planet` |
-| Docker Hub | `docker.io/lonelyx/zerotier-planet` |
+| Registry | Reference | Notes |
+| --- | --- | --- |
+| Docker Hub | `docker.io/lonelyx/zerotier-planet` | **default** — used by the scripts, Compose file and the 1Panel package |
+| GHCR (GitHub) | `ghcr.io/ban-sky/zerotier-planet` | alternative, byte-identical to Docker Hub |
 
 ```bash
-# GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.2
+# default: Docker Hub
+docker pull docker.io/lonelyx/zerotier-planet:2.4.3
 
-# Docker Hub
-docker pull lonelyx/zerotier-planet:2.4.2
+# alternative: GHCR (use it if Docker Hub is unreachable)
+docker pull ghcr.io/ban-sky/zerotier-planet:2.4.3
 ```
 
 Tag semantics (identical on both registries):
 
 | Tag | Contents | Updated when |
 | --- | --- | --- |
-| `2.4.2` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `2.4.3` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
 | `latest` | the most recent release | same |
 | `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
 
-Current `2.4.2` manifest (identical on both registries):
+Current `2.4.3` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -615,13 +616,13 @@ Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.2
+docker pull ghcr.io/ban-sky/zerotier-planet:2.4.3
 
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.2 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.3 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub (useful when it is the faster registry for you)
-sudo IMAGE=lonelyx/zerotier-planet:2.4.2 \
+sudo IMAGE=lonelyx/zerotier-planet:2.4.3 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -630,7 +631,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/zerotier-planet:2.4.2 \
+  --image docker.io/lonelyx/zerotier-planet:2.4.3 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 
