@@ -376,13 +376,33 @@ jobs:
         run: |
           set -euo pipefail
           node tests/totp.test.js
-          pass=$(docker exec zt-smoke cat /app/config/admin-password)
+
           jar=/tmp/zt-jar
-          rm -f "$jar"
-          curl -ks -c "$jar" -o /dev/null -X POST \
-            --data 'username=admin' --data-urlencode "password=$pass" \
-            https://127.0.0.1:3443/login
-          curl -ksf -b "$jar" https://127.0.0.1:3443/users/admin/totp -o /tmp/totp.html
+          newpass='smoke-2fa-pass-1234'
+          login() {
+            rm -f "$jar"
+            curl -ks -c "$jar" -b "$jar" -o /dev/null -w '%{redirect_url}' -X POST \
+              --data 'username=admin' --data-urlencode "password=$1" \
+              https://127.0.0.1:3443/login
+          }
+
+          # The bootstrap password is one-time: replace it first, which also
+          # exercises the forced password change.
+          pass=$(docker exec zt-smoke cat /app/config/admin-password)
+          login "$pass"
+          status=$(curl -ks -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' -X POST \
+            --data-urlencode "password1=$newpass" --data-urlencode "password2=$newpass" \
+            https://127.0.0.1:3443/users/admin/password)
+          echo "password change: $status"
+          [ "$status" = "200" ]
+          if docker exec zt-smoke test -e /app/config/admin-password; then
+            echo "::error::the bootstrap password file survived the password change"; exit 1
+          fi
+
+          status=$(curl -ks -b "$jar" -c "$jar" -o /tmp/totp.html -w '%{http_code}' \
+            https://127.0.0.1:3443/users/admin/totp)
+          echo "two-factor page: $status"
+          [ "$status" = "200" ]
           grep -q 'id="totp-secret"' /tmp/totp.html
           grep -q 'otpauth://' /tmp/totp.html
           secret=$(sed -n 's/.*id="totp-secret"[^>]*value="\([^"]*\)".*/\1/p' /tmp/totp.html | tr -d ' ')
@@ -400,34 +420,28 @@ jobs:
             echo "::error::no backup codes were shown after enabling TOTP"; exit 1
           fi
 
-          # the enrollment code belongs to the current 30 s step, so move to the
-          # next one before signing in again (replays are refused by design)
+          # The enrollment token belongs to the current 30 s step, so wait for the
+          # next one: replays inside a step are refused by design.
           node -e 'setTimeout(() => process.exit(0), (30 - (Math.floor(Date.now() / 1000) % 30)) * 1000 + 1500)'
           code=$(node -e "const t=require('./patch/ztncui/totp.js');console.log(t.generate('$secret'))")
-          jar2=/tmp/zt-jar2
-          rm -f "$jar2"
-          location=$(curl -ks -c "$jar2" -b "$jar2" -o /dev/null -w '%{redirect_url}' -X POST \
-            --data 'username=admin' --data-urlencode "password=$pass" \
-            https://127.0.0.1:3443/login)
+
+          location=$(login "$newpass")
           echo "password-only login lands on: $location"
           case "$location" in
             *'/login/2fa') ;;
             *) echo "::error::TOTP did not gate the sign-in"; exit 1 ;;
           esac
-          status=$(curl -ks -b "$jar2" -c "$jar2" -o /dev/null -w '%{http_code}' -X POST \
+          status=$(curl -ks -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' -X POST \
             -d "code=$code" https://127.0.0.1:3443/login/2fa)
           echo "token status: $status"
           [ "$status" = "302" ]
-          status=$(curl -ks -b "$jar2" -o /dev/null -w '%{http_code}' https://127.0.0.1:3443/controller)
+          status=$(curl -ks -b "$jar" -o /dev/null -w '%{http_code}' https://127.0.0.1:3443/controller)
           echo "controller after 2FA: $status"
           [ "$status" = "200" ]
+
           # a wrong token must not open a session
-          jar3=/tmp/zt-jar3
-          rm -f "$jar3"
-          curl -ks -c "$jar3" -b "$jar3" -o /dev/null -X POST \
-            --data 'username=admin' --data-urlencode "password=$pass" \
-            https://127.0.0.1:3443/login
-          status=$(curl -ks -b "$jar3" -c "$jar3" -o /dev/null -w '%{http_code}' -X POST \
+          login "$newpass" > /dev/null
+          status=$(curl -ks -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' -X POST \
             -d 'code=000000' https://127.0.0.1:3443/login/2fa)
           echo "wrong token status: $status"
           [ "$status" = "401" ]
