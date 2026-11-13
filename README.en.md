@@ -649,9 +649,9 @@ Current `2.5.0` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
-Digest:    sha256:90f365d67d3dba1951a166116e77ac9aa2d4a7bcbda7f37f8cb22528ddf61c3c
-  linux/amd64  -> sha256:d8778399227753cd3a1b385ed6939275e916b9066d35acff4077bc53a1d12709
-  linux/arm64  -> sha256:fa24f12d42d613fd8b92c7ac2d3d4abfca01d6e86d2722fc408a70a2476e4449
+Digest:    sha256:27cba128eac44ae4173aa1a1e3b92f879efd99849a47aa01aaae49c4734e33ea
+  linux/amd64  -> sha256:ea335de7b6755c8087d009f084843721a7a8de2a1af8accffec6b7b6ef9043f9
+  linux/arm64  -> sha256:271f06710979c6c159a494a080b6cff41108a9d5231fabb96e5ff34931a20fd6
 ```
 
 > The GHCR package inherits the repository visibility (public here). If a fork is private
