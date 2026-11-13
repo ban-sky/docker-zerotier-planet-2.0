@@ -25,6 +25,18 @@ router.get('/create', restrict, usersController.user_create_get);
 // POST request for user create
 router.post('/create', restrict, usersController.user_create_post);
 
+// GET request for the two-factor (TOTP) page
+router.get('/:name/totp', restrict, usersController.totp_get);
+
+// POST request to switch two-factor authentication on
+router.post('/:name/totp/enable', restrict, usersController.totp_enable_post);
+
+// POST request to switch two-factor authentication off
+router.post('/:name/totp/disable', restrict, usersController.totp_disable_post);
+
+// POST request to replace the backup codes
+router.post('/:name/totp/backup', restrict, usersController.totp_backup_post);
+
 // GET request for user delete (confirmation page)
 router.get('/:name/delete', restrict, usersController.user_delete_get);
 

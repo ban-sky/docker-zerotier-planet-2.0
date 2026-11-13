@@ -13,6 +13,7 @@
 - 图标与界面使用 ZeroTier 官方品牌标识（琥珀色 `#FFB25B` + 深藏青 `#161C24`）。
 - planet 下载走 `Authorization: Bearer` 鉴权，不再把密钥放在 URL 里。
 - 数据持久化在应用目录的 `data/`（`config`、`dist`、`one`）。
+- **两步验证（TOTP）**：每个管理员可为自己开启，支持备用码。
 
 ## 安装
 

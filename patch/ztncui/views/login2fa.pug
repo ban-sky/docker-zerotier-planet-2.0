@@ -1,0 +1,24 @@
+//-
+  ztncui - ZeroTier network controller UI
+  Copyright (C) 2017-2021  Key Networks (https://key-networks.com)
+  Licensed under GPLv3 - see LICENSE for details.
+
+extends login_layout
+
+block login_content
+  img.auth-logo(src='/images/zt-mark.svg', alt='', width='60', height='60')
+  h1.auth-title= t('twofa.title')
+  p.auth-subtitle= t('twofa.subtitle', { name: name })
+
+  if message
+    .alert.alert-error= message
+
+  form.form-stack(method='POST', action='')
+    .field
+      label(for='code')= t('twofa.code')
+      input#code(type='text', name='code', inputmode='numeric', autocomplete='one-time-code', autocapitalize='off', spellcheck='false', placeholder='123456', maxlength='32', required, autofocus)
+      span.field-hint= t('twofa.codeHint')
+    button.btn.btn-primary.btn-block(type='submit')= t('twofa.submit')
+
+  p.auth-footnote
+    a(href='/logout')= t('twofa.cancel')

@@ -293,3 +293,296 @@ exports.user_delete_post = async function(req, res) {
     deleted: true
   });
 };
+
+// ---------------------------------------------------------------------------
+// Two-factor authentication (TOTP, RFC 6238)
+//
+// The secret and the hashed backup codes live next to the password hash in the
+// passwd file (0600, inside the controller's data volume). Nothing is ever put
+// into the session except a short-lived enrollment secret.
+// ---------------------------------------------------------------------------
+
+const totp = require('../totp');
+
+const ISSUER = process.env.TOTP_ISSUER || 'ZeroTier Planet';
+const MAX_BACKUP_CODES = 10;
+
+function totpRecord(user) {
+  if (user && user.totp && typeof user.totp.secret === 'string' && user.totp.secret) {
+    return user.totp;
+  }
+  return null;
+}
+
+function loadUser(users, name) {
+  if (!validUsername(name) || !Object.prototype.hasOwnProperty.call(users, name)) return null;
+  return users[name] || null;
+}
+
+exports.totp_status = async function(name) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  const record = totpRecord(user);
+  if (!record) return { enabled: false, backup_codes: 0, verified_at: null };
+  return {
+    enabled: true,
+    backup_codes: Array.isArray(record.backupCodes) ? record.backupCodes.length : 0,
+    verified_at: record.verifiedAt || null
+  };
+};
+
+/** A fresh enrollment challenge; the secret waits in the session until it is confirmed. */
+exports.totp_challenge = function(name) {
+  const secret = totp.generateSecret();
+  return {
+    secret,
+    formatted: totp.formatSecret(secret),
+    uri: totp.otpauthUri(secret, name, ISSUER),
+    issuer: ISSUER
+  };
+};
+
+/** Store the confirmed secret and return the one-time backup codes. */
+exports.totp_activate = async function(name, secret, step) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  if (!user) throw new Error('unknown user');
+
+  const codes = totp.generateBackupCodes(MAX_BACKUP_CODES);
+  user.totp = {
+    secret,
+    verifiedAt: Date.now(),
+    lastStep: step,
+    backupCodes: codes.map(totp.hashBackupCode)
+  };
+  await update_users(users);
+  return codes;
+};
+
+exports.totp_deactivate = async function(name) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  if (!user) return false;
+  if (!totpRecord(user)) return false;
+  delete user.totp;
+  await update_users(users);
+  return true;
+};
+
+exports.totp_regenerate_backup_codes = async function(name) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  const record = totpRecord(user);
+  if (!record) return null;
+  const codes = totp.generateBackupCodes(MAX_BACKUP_CODES);
+  record.backupCodes = codes.map(totp.hashBackupCode);
+  record.lastStep = record.lastStep || 0;
+  await update_users(users);
+  return codes;
+};
+
+/**
+ * Check a submitted code: a TOTP token first, then a backup code. Replaying a
+ * token that was already used for this account is refused, so a code observed
+ * on the wire cannot be replayed inside its 30 s window.
+ *
+ * Returns { ok: true, kind: 'totp' | 'backup' } or { ok: false, reason }.
+ */
+exports.totp_check = async function(name, token) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  const record = totpRecord(user);
+  if (!record) return { ok: false, reason: 'not_enabled' };
+
+  const step = totp.verify(record.secret, token);
+  if (step !== null) {
+    if (record.lastStep && step <= record.lastStep) {
+      return { ok: false, reason: 'replayed' };
+    }
+    record.lastStep = step;
+    await update_users(users);
+    return { ok: true, kind: 'totp' };
+  }
+
+  const hash = totp.hashBackupCode(token);
+  const codes = Array.isArray(record.backupCodes) ? record.backupCodes : [];
+  const index = codes.indexOf(hash);
+  if (index !== -1) {
+    codes.splice(index, 1);
+    record.backupCodes = codes;
+    await update_users(users);
+    return { ok: true, kind: 'backup', remaining: codes.length };
+  }
+
+  return { ok: false, reason: 'invalid' };
+};
+
+// --- pages -----------------------------------------------------------------
+
+function selfOnly(req, res, name) {
+  const sessionUser = req.session.user && req.session.user.name;
+  if (sessionUser === name) return true;
+  res.status(403).render('error', { message: msg(req, 'msg.ownPasswordOnly'), error: {} });
+  return false;
+}
+
+exports.totp_get = async function(req, res) {
+  const navigate = { active: 'users' };
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  const status = await exports.totp_status(name);
+
+  let flash = '';
+  if (req.session.error) {
+    flash = req.session.error;
+    delete req.session.error;
+  } else if (req.session.success) {
+    flash = req.session.success;
+    delete req.session.success;
+  }
+
+  // Keep one enrollment secret per session so refreshing the page does not
+  // invalidate the QR scan the user just did.
+  if (!status.enabled) {
+    const current = req.session.totpEnroll;
+    if (!current || current.name !== name || !current.secret) {
+      req.session.totpEnroll = Object.assign({ name, issued_at: Date.now() }, exports.totp_challenge(name));
+    }
+    return res.render('totp', {
+      title: msg(req, 'page.twoFactor'),
+      navigate,
+      name,
+      status,
+      enroll: req.session.totpEnroll,
+      backupCodes: null,
+      message: flash
+    });
+  }
+
+  // Enrollment finished: the plaintext codes are shown exactly once, straight
+  // from the redirect target, and never kept in the session.
+  const fresh = req.session.totpBackupCodes;
+  delete req.session.totpBackupCodes;
+  delete req.session.totpEnroll;
+
+  res.render('totp', {
+    title: msg(req, 'page.twoFactor'),
+    navigate,
+    name,
+    status,
+    enroll: null,
+    backupCodes: Array.isArray(fresh) ? fresh : null,
+    message: flash
+  });
+};
+
+exports.totp_enable_post = async function(req, res) {
+  const navigate = { active: 'users' };
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  const challenge = req.session.totpEnroll;
+  if (!challenge || challenge.name !== name || !challenge.secret) {
+    req.session.error = msg(req, 'msg.totpRestart');
+    return res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+  }
+
+  const status = await exports.totp_status(name);
+  if (status.enabled) {
+    req.session.error = msg(req, 'msg.totpAlreadyEnabled');
+    return res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+  }
+
+  const step = totp.verify(challenge.secret, req.body.code);
+  if (step === null) {
+    return res.status(400).render('totp', {
+      title: msg(req, 'page.twoFactor'),
+      navigate,
+      name,
+      status,
+      enroll: challenge,
+      backupCodes: null,
+      message: msg(req, 'msg.totpCodeInvalid')
+    });
+  }
+
+  const codes = await exports.totp_activate(name, challenge.secret, step);
+  delete req.session.totpEnroll;
+  req.session.totpBackupCodes = codes;
+  req.session.success = msg(req, 'msg.totpEnabled');
+  res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+};
+
+exports.totp_disable_post = async function(req, res) {
+  const navigate = { active: 'users' };
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+  const code = typeof req.body.code === 'string' ? req.body.code : '';
+
+  const status = await exports.totp_status(name);
+  if (!status.enabled) {
+    req.session.error = msg(req, 'msg.totpNotEnabled');
+    return res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+  }
+
+  if (!(await argon2.verify((await get_users())[name].hash, password).catch(() => false))) {
+    return res.status(401).render('totp', {
+      title: msg(req, 'page.twoFactor'),
+      navigate,
+      name,
+      status,
+      enroll: null,
+      backupCodes: null,
+      message: msg(req, 'msg.authFailed')
+    });
+  }
+
+  const check = await exports.totp_check(name, code);
+  if (!check.ok) {
+    return res.status(401).render('totp', {
+      title: msg(req, 'page.twoFactor'),
+      navigate,
+      name,
+      status,
+      enroll: null,
+      backupCodes: null,
+      message: msg(req, 'msg.totpCodeInvalid')
+    });
+  }
+
+  await exports.totp_deactivate(name);
+  req.session.success = msg(req, 'msg.totpDisabled');
+  res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+};
+
+exports.totp_backup_post = async function(req, res) {
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  const code = typeof req.body.code === 'string' ? req.body.code : '';
+  const check = await exports.totp_check(name, code);
+  if (!check.ok) {
+    req.session.error = msg(req, 'msg.totpCodeInvalid');
+    return res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+  }
+
+  const codes = await exports.totp_regenerate_backup_codes(name);
+  req.session.totpBackupCodes = codes || [];
+  req.session.success = msg(req, 'msg.totpBackupRegenerated');
+  res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+};

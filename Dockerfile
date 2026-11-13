@@ -152,6 +152,7 @@ RUN cd /src/ztncui \
  && cp /tmp/ztncui-patch/validate.js ./src/validate.js \
  && cp /tmp/ztncui-patch/origin.js ./src/origin.js \
  && cp /tmp/ztncui-patch/i18n.js ./src/i18n.js \
+ && cp /tmp/ztncui-patch/totp.js ./src/totp.js \
  && cp /tmp/ztncui-patch/zt.js ./src/controllers/zt.js \
  && cp /tmp/ztncui-patch/routes-index.js ./src/routes/index.js \
  && cp /tmp/ztncui-patch/routes-users.js ./src/routes/users.js \

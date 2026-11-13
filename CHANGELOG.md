@@ -2,6 +2,30 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.5.0] - 2026-11-13
+
+### 新增
+
+- **登录两步验证（TOTP，RFC 6238）**：每个管理员可以给自己的账号单独开启，登录时密码之外
+  还要输入验证器里的 6 位动态码。密码正确只进入 `/login/2fa`，验证通过才建立会话。
+- 绑定页给出 32 字符密钥与 `otpauth://` 链接，手动录入任意 TOTP 应用；绑定成功后一次性
+  显示 10 个备用码（`XXXX-XXXX`，SHA-256 存储，用一次即作废）。
+- 防重放：按账号记录 `lastStep`，同一 30 秒窗口内的动态码不能被再次使用。
+- 关闭两步验证需要**当前密码 + 一次有效代码**，仅拿到会话无法关闭。
+- 新增 `TOTP_ISSUER` 环境变量（默认 `ZeroTier Planet`），控制验证器里显示的发行方名称。
+- 新增 `patch/ztncui/totp.js`（零依赖，仅用 node 内置 `crypto`）与 `tests/totp.test.js`
+  （RFC 6238 附录 B 全部 SHA-1 测试向量）。
+- 新增 `1panel/apps/zerotier-planet/2.5.0/`（镜像 `docker.io/lonelyx/zerotier-planet:2.5.0`）。
+
+### 变更
+
+- `build.sh`、`deploy.sh`、`docker-compose.yml`、`scripts/migrate-from-upstream.sh` 的默认镜像
+  版本推进到 `2.5.0`。
+- README（中/英）新增「两步验证（TOTP）」章节，环境变量表补 `TOTP_ISSUER`；1Panel 应用文档
+  的功能列表标注两步验证。
+- CI 冒烟新增两步验证用例：跑单元测试、开启 TOTP、确认登录被 `/login/2fa` 拦截、动态码与
+  错误码的放行/拒绝行为。
+
 ## [2.4.5] - 2026-11-13
 
 ### 修复

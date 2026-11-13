@@ -1,0 +1,67 @@
+//-
+  ztncui - ZeroTier network controller UI
+  Copyright (C) 2017-2021  Key Networks (https://key-networks.com)
+  Licensed under GPLv3 - see LICENSE for details.
+
+extends users_layout
+
+block users_content
+  - const base = '/users/' + encodeURIComponent(name) + '/totp'
+
+  if message
+    .alert.alert-info= message
+
+  .card.form-card
+    h2= t('twofa.cardTitle')
+
+    if backupCodes && backupCodes.length
+      .alert.alert-info
+        p= t('twofa.backupOnce')
+        ul.code-list
+          each code in backupCodes
+            li= code
+
+    if status.enabled
+      p.card-subtitle= t('twofa.enabledHint')
+      p.meta-line= t('twofa.backupLeft', { count: status.backup_codes })
+
+      form.form-stack(method='POST', action=base + '/backup')
+        .field
+          label(for='backup-code')= t('twofa.code')
+          input#backup-code(type='text', name='code', inputmode='numeric', autocomplete='one-time-code', spellcheck='false', maxlength='32', required)
+          span.field-hint= t('twofa.codeHint')
+        .form-actions
+          button.btn.btn-ghost(type='submit')= t('twofa.regenerateBackup')
+
+      hr.rule
+
+      p.card-subtitle= t('twofa.disableHint')
+      form.form-stack(method='POST', action=base + '/disable')
+        .field
+          label(for='disable-password')= t('field.password')
+          input#disable-password(type='password', name='password', autocomplete='current-password', maxlength='160', required)
+        .field
+          label(for='disable-code')= t('twofa.code')
+          input#disable-code(type='text', name='code', inputmode='numeric', autocomplete='one-time-code', spellcheck='false', maxlength='32', required)
+        .form-actions
+          button.btn.btn-danger(type='submit')= t('twofa.disable')
+          a.btn.btn-ghost(href='/users')= t('btn.cancel')
+    else
+      p.card-subtitle= t('twofa.disabledHint')
+      p.card-subtitle= t('twofa.setupHint')
+
+      .field
+        label(for='totp-secret')= t('twofa.secret')
+        input#totp-secret(type='text', value=enroll.formatted, readonly, spellcheck='false')
+      .field
+        label(for='totp-uri')= t('twofa.uri')
+        input#totp-uri(type='text', value=enroll.uri, readonly, spellcheck='false')
+
+      form.form-stack(method='POST', action=base + '/enable')
+        .field
+          label(for='enable-code')= t('twofa.code')
+          input#enable-code(type='text', name='code', inputmode='numeric', autocomplete='one-time-code', spellcheck='false', placeholder='123456', maxlength='8', required, autofocus)
+          span.field-hint= t('twofa.codeHint')
+        .form-actions
+          button.btn.btn-primary(type='submit')= t('twofa.enable')
+          a.btn.btn-ghost(href='/users')= t('btn.cancel')

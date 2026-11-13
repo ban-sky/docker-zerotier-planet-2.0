@@ -38,4 +38,5 @@ block users_content
                     span.badge.badge-warn= t('users.changeRequired')
                 td.actions(data-label=t('field.actions'))
                   a.btn.btn-sm.btn-ghost(href=userUrl + '/password')= t('btn.setPassword')
+                  a.btn.btn-sm.btn-ghost(href=userUrl + '/totp')= t('btn.twoFactor')
                   a.btn.btn-sm.btn-danger(href=userUrl + '/delete', data-confirm=t('users.deleteConfirm'))= t('btn.delete')

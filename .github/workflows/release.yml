@@ -372,6 +372,66 @@ jobs:
             echo "::error::the login page still mentions the password file"; exit 1
           fi
 
+      - name: Verify two-step verification is wired through
+        run: |
+          set -euo pipefail
+          node tests/totp.test.js
+          pass=$(docker exec zt-smoke cat /app/config/admin-password)
+          jar=/tmp/zt-jar
+          rm -f "$jar"
+          curl -ks -c "$jar" -o /dev/null -X POST \
+            --data 'username=admin' --data-urlencode "password=$pass" \
+            https://127.0.0.1:3443/login
+          curl -ksf -b "$jar" https://127.0.0.1:3443/users/admin/totp -o /tmp/totp.html
+          grep -q 'id="totp-secret"' /tmp/totp.html
+          grep -q 'otpauth://' /tmp/totp.html
+          secret=$(sed -n 's/.*id="totp-secret"[^>]*value="\([^"]*\)".*/\1/p' /tmp/totp.html | tr -d ' ')
+          echo "enrollment secret length: ${#secret}"
+          [ "${#secret}" -eq 32 ]
+
+          code=$(node -e "const t=require('./patch/ztncui/totp.js');console.log(t.generate('$secret'))")
+          status=$(curl -ks -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' -X POST \
+            -d "code=$code" https://127.0.0.1:3443/users/admin/totp/enable)
+          echo "enable status: $status"
+          [ "$status" = "302" ]
+
+          curl -ks -b "$jar" -c "$jar" https://127.0.0.1:3443/users/admin/totp -o /tmp/totp-enabled.html
+          if ! grep -Eq '[A-Z2-9]{4}-[A-Z2-9]{4}' /tmp/totp-enabled.html; then
+            echo "::error::no backup codes were shown after enabling TOTP"; exit 1
+          fi
+
+          # the enrollment code belongs to the current 30 s step, so move to the
+          # next one before signing in again (replays are refused by design)
+          node -e 'setTimeout(() => process.exit(0), (30 - (Math.floor(Date.now() / 1000) % 30)) * 1000 + 1500)'
+          code=$(node -e "const t=require('./patch/ztncui/totp.js');console.log(t.generate('$secret'))")
+          jar2=/tmp/zt-jar2
+          rm -f "$jar2"
+          location=$(curl -ks -c "$jar2" -b "$jar2" -o /dev/null -w '%{redirect_url}' -X POST \
+            --data 'username=admin' --data-urlencode "password=$pass" \
+            https://127.0.0.1:3443/login)
+          echo "password-only login lands on: $location"
+          case "$location" in
+            *'/login/2fa') ;;
+            *) echo "::error::TOTP did not gate the sign-in"; exit 1 ;;
+          esac
+          status=$(curl -ks -b "$jar2" -c "$jar2" -o /dev/null -w '%{http_code}' -X POST \
+            -d "code=$code" https://127.0.0.1:3443/login/2fa)
+          echo "token status: $status"
+          [ "$status" = "302" ]
+          status=$(curl -ks -b "$jar2" -o /dev/null -w '%{http_code}' https://127.0.0.1:3443/controller)
+          echo "controller after 2FA: $status"
+          [ "$status" = "200" ]
+          # a wrong token must not open a session
+          jar3=/tmp/zt-jar3
+          rm -f "$jar3"
+          curl -ks -c "$jar3" -b "$jar3" -o /dev/null -X POST \
+            --data 'username=admin' --data-urlencode "password=$pass" \
+            https://127.0.0.1:3443/login
+          status=$(curl -ks -b "$jar3" -c "$jar3" -o /dev/null -w '%{http_code}' -X POST \
+            -d 'code=000000' https://127.0.0.1:3443/login/2fa)
+          echo "wrong token status: $status"
+          [ "$status" = "401" ]
+
       - name: Verify the file server requires authentication
         run: |
           set -euo pipefail

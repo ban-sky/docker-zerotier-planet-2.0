@@ -9,6 +9,7 @@ const auth = require('../controllers/auth');
 const authenticate = auth.authenticate;
 const restrict = auth.restrict;
 const router = express.Router();
+const usersController = require('../controllers/usersController');
 
 // Translate a user-visible string when the i18n middleware is installed; fall
 // back to the key so the UI still renders when it is not.
@@ -101,6 +102,32 @@ router.get('/login', guest_only, function(req, res) {
   res.render('login', { title: msg(req, 'page.login'), message: message });
 });
 
+/** Wrap the callback-based authenticate() so the handler can stay async. */
+function authenticateAsync(name, pass) {
+  return new Promise(function(resolve) {
+    auth.authenticate(name, pass, function(err, user) {
+      resolve(err ? null : user || null);
+    });
+  });
+}
+
+const PENDING_TTL_MS = 5 * 60 * 1000;
+
+/** Start a session for a fully authenticated user. */
+function finishLogin(req, res, next, user, redirectTo) {
+  req.session.regenerate(function(regenErr) {
+    if (regenErr) return next(regenErr);
+    delete req.session.pending2fa;
+    req.session.user = user;
+    req.session.success = msg(req, 'msg.authenticatedAs', { name: user.name });
+    if (user.pass_set) {
+      res.redirect(safeRedirect(redirectTo));
+    } else {
+      res.redirect('/users/' + encodeURIComponent(user.name) + '/password');
+    }
+  });
+}
+
 router.post('/login', async function(req, res, next) {
   const ip = clientIp(req);
 
@@ -124,27 +151,96 @@ router.post('/login', async function(req, res, next) {
   }
 
   try {
-    await authenticate(username, password, function(err, user) {
-      if (!user) {
-        recordFailure(ip);
-        return res.status(401).render('login', {
-          title: msg(req, 'page.login'),
-          message: msg(req, 'msg.authFailed')
-        });
-      }
+    const user = await authenticateAsync(username, password);
+    if (!user) {
+      recordFailure(ip);
+      return res.status(401).render('login', {
+        title: msg(req, 'page.login'),
+        message: msg(req, 'msg.authFailed')
+      });
+    }
 
+    // Password is correct. When 2FA is on, stop here and ask for the token;
+    // nothing is granted until the second factor is verified.
+    const status = await usersController.totp_status(user.name);
+    if (status.enabled) {
       clearFailures(ip);
+      const redirectTo = safeRedirect(req.query.redirect);
       req.session.regenerate(function(regenErr) {
         if (regenErr) return next(regenErr);
-        req.session.user = user;
-        req.session.success = msg(req, 'msg.authenticatedAs', { name: user.name });
-        if (user.pass_set) {
-          res.redirect(safeRedirect(req.query.redirect));
-        } else {
-          res.redirect('/users/' + encodeURIComponent(user.name) + '/password');
-        }
+        req.session.pending2fa = {
+          name: user.name,
+          pass_set: !!user.pass_set,
+          redirect: redirectTo,
+          issued_at: Date.now()
+        };
+        res.redirect('/login/2fa');
       });
+      return;
+    }
+
+    clearFailures(ip);
+    finishLogin(req, res, next, user, req.query.redirect);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/login/2fa', function(req, res) {
+  const pending = req.session.pending2fa;
+  if (!pending || Date.now() - pending.issued_at > PENDING_TTL_MS) {
+    delete req.session.pending2fa;
+    return res.redirect('/login');
+  }
+  res.render('login2fa', {
+    title: msg(req, 'page.twoFactor'),
+    name: pending.name,
+    message: null
+  });
+});
+
+router.post('/login/2fa', async function(req, res, next) {
+  const ip = clientIp(req);
+  const pending = req.session.pending2fa;
+
+  if (!pending || Date.now() - pending.issued_at > PENDING_TTL_MS) {
+    delete req.session.pending2fa;
+    req.session.error = msg(req, 'msg.totpSessionExpired');
+    return res.redirect('/login');
+  }
+
+  if (isThrottled(ip)) {
+    res.setHeader('Retry-After', '900');
+    return res.status(429).render('login2fa', {
+      title: msg(req, 'page.twoFactor'),
+      name: pending.name,
+      message: msg(req, 'msg.tooManyAttempts')
     });
+  }
+
+  const code = typeof req.body.code === 'string' ? req.body.code : '';
+  if (!code || code.length > 32) {
+    recordFailure(ip);
+    return res.status(401).render('login2fa', {
+      title: msg(req, 'page.twoFactor'),
+      name: pending.name,
+      message: msg(req, 'msg.totpCodeInvalid')
+    });
+  }
+
+  try {
+    const check = await usersController.totp_check(pending.name, code);
+    if (!check.ok) {
+      recordFailure(ip);
+      return res.status(401).render('login2fa', {
+        title: msg(req, 'page.twoFactor'),
+        name: pending.name,
+        message: msg(req, 'msg.totpCodeInvalid')
+      });
+    }
+
+    clearFailures(ip);
+    finishLogin(req, res, next, { name: pending.name, pass_set: pending.pass_set }, pending.redirect);
   } catch (err) {
     next(err);
   }
