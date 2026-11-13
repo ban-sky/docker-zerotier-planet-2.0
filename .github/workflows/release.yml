@@ -327,11 +327,12 @@ jobs:
           set -euo pipefail
           # Simplified Chinese is the default when the browser does not ask for English
           curl -ks https://127.0.0.1:3443/login -o /tmp/login-zh.html
-          grep -q '管理员登录' /tmp/login-zh.html
           grep -q '用户名' /tmp/login-zh.html
+          grep -q '密码' /tmp/login-zh.html
           # English on request
           curl -ks https://127.0.0.1:3443/login -H 'Accept-Language: en' -o /tmp/login-en.html
-          grep -q 'Admin access' /tmp/login-en.html
+          grep -q 'Username' /tmp/login-en.html
+          grep -q 'Sign in' /tmp/login-en.html
           # the switch endpoint stores the choice and redirects to a local path only
           curl -ks -o /dev/null -D /tmp/lang.headers https://127.0.0.1:3443/lang/en
           grep -qi 'set-cookie: lang=en' /tmp/lang.headers
