@@ -527,12 +527,12 @@ jobs:
             echo
             echo "## Images"
             echo
-            echo "| Registry | Reference |"
-            echo "| --- | --- |"
-            echo "| GHCR | \`${IMAGE}:${TAG}\` |"
+            echo "| Registry | Reference | Notes |"
+            echo "| --- | --- | --- |"
             if [ -n "${DOCKERHUB_USERNAME:-}" ]; then
-              echo "| Docker Hub | \`docker.io/${DOCKERHUB_USERNAME}/zerotier-planet:${TAG}\` |"
+              echo "| Docker Hub | \`docker.io/${DOCKERHUB_USERNAME}/zerotier-planet:${TAG}\` | default |"
             fi
+            echo "| GHCR | \`${IMAGE}:${TAG}\` | alternative |"
             echo
             echo "Both references point at the same multi-arch manifest (\`linux/amd64\` + \`linux/arm64\`)."
             echo
