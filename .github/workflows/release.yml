@@ -538,7 +538,7 @@ jobs:
             echo "- The login, entry and overview pages were simplified: less copy, no duplicated"
             echo "  branding, and quick links that show only what they do."
             echo "- Settings pages use one-line subtitles instead of paragraphs."
-            echo "- The 1Panel app-store icon was redesigned."
+            echo "- The 1Panel app-store icon now follows the official ZeroTier brand mark."
             echo "- Admin UI still renders in **Simplified Chinese** or English (\`DEFAULT_LOCALE\`)."
             echo "- \`1panel-scheduled-update.sh\` keeps a 1Panel install on the latest release."
           } > RELEASE_NOTES.md
