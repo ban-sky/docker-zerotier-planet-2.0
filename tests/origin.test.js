@@ -109,10 +109,13 @@ check('referer fallback',
   }, PUBLIC)).ok,
   true);
 
-// 11. Unparsable Origin is rejected, not crashed.
-check('unparsable origin rejected',
+// 11. An unparsable Origin carries no host to compare with. Rejecting it does
+//     not add protection - any non-browser client can just omit the header,
+//     which is allowed - while it locks out browsers that send odd values.
+//     Treated like a missing Origin (the Referer is consulted first).
+check('unparsable origin without referer is tolerated',
   origin.checkOrigin(req('POST', { host: 'planet.example.com', origin: 'not a url' }, PUBLIC)).ok,
-  false);
+  true);
 
 // 12. Non-browser clients without Origin/Referer still pass the origin gate
 //     (they must present a session cookie anyway).
@@ -149,6 +152,42 @@ check('private address detection',
     .map(origin.isPrivateAddress), [true, true, true, true, true, true, true]);
 check('public address detection',
   ['203.0.113.9', '8.8.8.8', '::ffff:8.8.4.4'].map(origin.isPrivateAddress), [false, false, false]);
+
+// 18. "Origin: null" is an opaque origin (sandboxed frame, data:/file: page,
+//     in-app WebView). It is not garbage: rejecting it locked those browsers
+//     out of the login form entirely.
+check('opaque origin is accepted',
+  origin.checkOrigin(req('POST', { host: '38.246.246.76:3443', origin: 'null' }, PUBLIC)).ok,
+  true);
+check('opaque origin uppercase',
+  origin.checkOrigin(req('POST', { host: '38.246.246.76:3443', origin: 'NULL' }, PUBLIC)).ok,
+  true);
+
+// 19. With an opaque Origin the Referer still gets a say when it disagrees.
+check('opaque origin, same-host referer',
+  origin.checkOrigin(req('POST', {
+    host: '38.246.246.76:3443',
+    origin: 'null',
+    referer: 'https://38.246.246.76:3443/login'
+  }, PUBLIC)).ok,
+  true);
+check('opaque origin, cross-site referer',
+  origin.checkOrigin(req('POST', {
+    host: '38.246.246.76:3443',
+    origin: 'null',
+    referer: 'https://evil.example/attack.html'
+  }, PUBLIC)).ok,
+  false);
+
+// 20. Garbage in the Origin header cannot be used, so the Referer is used
+//     instead of failing outright.
+check('unparsable origin falls back to referer',
+  origin.checkOrigin(req('POST', {
+    host: '10.0.0.5:3443',
+    origin: '@@bogus@@',
+    referer: 'https://10.0.0.5:3443/login'
+  }, PUBLIC)).ok,
+  true);
 
 if (failed) {
   console.error(failed + ' check(s) failed');

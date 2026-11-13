@@ -131,21 +131,47 @@ function parseOrigin(source) {
 }
 
 /*
+ * "Origin: null" is what browsers send for an opaque origin: a sandboxed
+ * iframe, a data:/file: page, or - very common in the field - an in-app
+ * WebView (WeChat, QQ, UC, some Android browsers). It is a legal value, not
+ * garbage, so it must not be treated as an unparsable origin: that made every
+ * login fail in those browsers. An opaque origin carries no host to compare,
+ * so we fall back to the Referer and, when that is missing too, behave like a
+ * client that sent no Origin at all (the session cookie is SameSite=Lax, so a
+ * cross-site POST never carries credentials anyway).
+ */
+function usableSource(value) {
+  const raw = value ? String(value).trim() : '';
+  if (!raw) return '';
+  if (raw.toLowerCase() === 'null') return '';
+  return raw;
+}
+
+/*
  * Returns { ok: true } or { ok: false, reason, origin, candidates }.
  * `reason` is one of: unparsable | mismatch.
  */
 function checkOrigin(req, options) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return { ok: true };
 
-  const source = (req.get && (req.get('origin') || req.get('referer')))
-    || (req.headers && (req.headers.origin || req.headers.referer))
-    || '';
-  if (!source) return { ok: true, reason: 'no-source' }; // non-browser client
+  const headerOrigin = (req.get && req.get('origin'))
+    || (req.headers && req.headers.origin) || '';
+  const headerReferer = (req.get && req.get('referer'))
+    || (req.headers && req.headers.referer) || '';
+
+  const source = usableSource(headerOrigin) || usableSource(headerReferer);
+  if (!source) return { ok: true, reason: 'no-source' }; // opaque origin or non-browser client
 
   const candidates = collectCandidates(req, options);
   const parsed = parseOrigin(source);
   if (!parsed) {
-    return { ok: false, reason: 'unparsable', origin: source, candidates };
+    // An unparsable Origin ("null" is handled above) still has the Referer as
+    // a second chance; only reject when neither can be used.
+    const fallback = parseOrigin(usableSource(headerReferer) || '');
+    if (!fallback) return { ok: true, reason: 'no-source' };
+    const fallbackHost = normalizeHostname(fallback.host);
+    if (fallbackHost && candidates.includes(fallbackHost)) return { ok: true };
+    return { ok: false, reason: 'mismatch', origin: String(headerReferer), candidates };
   }
 
   const originHost = normalizeHostname(parsed.host);

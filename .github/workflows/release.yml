@@ -351,6 +351,14 @@ jobs:
             --data 'user=admin&password=x')
           echo "cross-site login: $code"
           [ "$code" = "403" ]
+          # regression: in-app WebViews send an opaque origin ("Origin: null")
+          # and must land on the credential check instead of a 403
+          code=$(curl -ks -o /dev/null -w '%{http_code}' -X POST https://127.0.0.1:3443/login \
+            -H 'Host: 127.0.0.1:3443' \
+            -H 'Origin: null' \
+            --data 'user=admin&password=definitely-wrong')
+          echo "opaque origin login: $code"
+          [ "$code" != "403" ]
 
       - name: Verify the file server requires authentication
         run: |

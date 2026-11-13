@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.3.1] - 2026-11-13
+
+### 修复
+
+- **`Origin: null` 导致登录被 403**：部分浏览器（微信/QQ/UC 等内置 WebView、沙箱
+  iframe、`file://` 页面）提交表单时发送的是不透明来源 `Origin: null`。旧实现把它
+  当成「无法解析的来源」直接拒绝，日志表现为
+  `rejected POST /login: origin=null candidates=<你的IP>`，用户只能看到
+  「请求来源校验失败」。现在把 `null` 视作「没有可用的来源」：先退到 `Referer`
+  校验，`Referer` 也缺失时按未发送 `Origin` 处理放行（会话 cookie 本身是
+  `SameSite=Lax`，跨站 POST 不会携带凭据）。
+- 无法解析的 `Origin` 同样先尝试 `Referer`，不再立即拒绝。
+- `tests/origin.test.js` 增补 5 条用例：`null`/`NULL`、`null` + 同源 `Referer`、
+  `null` + 跨站 `Referer`（仍拒绝）、无法解析 + 同源 `Referer`。
+
+### 文档
+
+- README（中/英）故障排查新增 `origin=null` 条目，说明成因与临时绕过方式。
+
 ## [2.3.0] - 2026-11-13
 
 ### 新增
