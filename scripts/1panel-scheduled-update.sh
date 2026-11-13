@@ -245,9 +245,15 @@ cp -a "$staged" "$target"
 chmod -R a+rX "$target"
 
 # Keep only the newest five backups so a cron job cannot fill the disk.
-ls -1d "${target}".bak.* 2>/dev/null | sort -r | tail -n +6 | while read -r old; do
-  [ -n "$old" ] && rm -rf "$old"
-done
+shopt -s nullglob
+backups=("${target}".bak.*)
+shopt -u nullglob
+if [ "${#backups[@]}" -gt 5 ]; then
+  printf '%s\n' "${backups[@]}" | sort -r | tail -n +6 | while read -r old; do
+    [ -n "$old" ] || continue
+    rm -rf -- "$old"
+  done
+fi
 
 # ---------------------------------------------------------------------------
 # Restart the running app on the new image

@@ -213,20 +213,27 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Exercise the 1Panel cron helper
+        env:
+          ZTP_SKIP_ROOT_CHECK: "1"
         run: |
           set -euo pipefail
           bash -n scripts/1panel-scheduled-update.sh
-          # --dry-run must not touch anything.
-          sudo bash scripts/1panel-scheduled-update.sh \
-            --panel-dir /tmp/panel-smoke --source branch --dry-run --quiet
+          panel_dir="$(mktemp -d)/panel"
+
+          # --dry-run must report and create nothing.
+          bash -x scripts/1panel-scheduled-update.sh \
+            --panel-dir "$panel_dir" --source branch --dry-run --quiet
+          test ! -e "$panel_dir"
+
           # A real sync from the branch, without restarting containers.
-          sudo bash scripts/1panel-scheduled-update.sh \
-            --panel-dir /tmp/panel-smoke --source branch --no-restart --quiet
-          test -f /tmp/panel-smoke/resource/apps/local/zerotier-planet/data.yml
-          ls -1 /tmp/panel-smoke/resource/apps/local/zerotier-planet
+          bash scripts/1panel-scheduled-update.sh \
+            --panel-dir "$panel_dir" --source branch --no-restart
+          test -f "$panel_dir/resource/apps/local/zerotier-planet/data.yml"
+          ls -1 "$panel_dir/resource/apps/local/zerotier-planet"
+
           # A second run must be a no-op.
-          sudo bash scripts/1panel-scheduled-update.sh \
-            --panel-dir /tmp/panel-smoke --source branch --no-restart 2>&1 | grep -q '无需更新'
+          bash scripts/1panel-scheduled-update.sh \
+            --panel-dir "$panel_dir" --source branch --no-restart 2>&1 | grep -q '无需更新'
 
       - name: Download the amd64 archive
         uses: actions/download-artifact@v4
