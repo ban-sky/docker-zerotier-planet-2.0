@@ -648,10 +648,10 @@ jobs:
             echo
             echo "## Highlights in this build"
             echo
-            echo "- The login, entry and overview pages were simplified: less copy, no duplicated"
-            echo "  branding, and quick links that show only what they do."
-            echo "- Settings pages use one-line subtitles instead of paragraphs."
-            echo "- The 1Panel app-store icon now follows the official ZeroTier brand mark."
+            echo "- **Two-step verification (TOTP)** can be enabled per admin account; a correct"
+            echo "  password only reaches \`/login/2fa\`, and tokens cannot be replayed."
+            echo "- Single-use backup codes, and disabling a factor requires the password plus a code."
+            echo "- The 1Panel app-store icon follows the official ZeroTier brand mark."
             echo "- Admin UI still renders in **Simplified Chinese** or English (\`DEFAULT_LOCALE\`)."
             echo "- \`1panel-scheduled-update.sh\` keeps a 1Panel install on the latest release."
           } > RELEASE_NOTES.md
