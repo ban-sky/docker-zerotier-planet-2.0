@@ -530,9 +530,9 @@ tag 含义（两个 registry 相同）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
-Digest:    sha256:eb1b2586aa9776f33221470ee101e986858aeacdfeff7badc42d873dc5b01744
-  linux/amd64  -> sha256:2e8cf9962150e75965bc3ede5590915f95af4bb38667f1753f538085a5f6df5d
-  linux/arm64  -> sha256:2e903d4b8585272d0e8228e184b96c825c40ba7f0cb2e7542be1998ccb809ce8
+Digest:    sha256:9aa1c3a7942f68acb1fba1dd766e89374e75f8a5f5582dc76a9d6cb2feccebb8
+  linux/amd64  -> sha256:d947256c879b8c5af9c53a32f73181d14ce1421ebbe53bf06276a84f37d22b87
+  linux/arm64  -> sha256:b11a41daf2d931fdcff4a1ddece08ee86a10eceeefb36dc4192148bddc16da78
 ```
 
 > GHCR 包继承仓库可见性，本仓库为 public；Docker Hub 仓库也是 public。
