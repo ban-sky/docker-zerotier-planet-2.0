@@ -170,9 +170,9 @@ FROM ${NODE_IMAGE} AS runtime
 
 ARG APT_MIRROR=http://mirrors.ustc.edu.cn
 
-LABEL org.opencontainers.image.title="docker-zerotier-planet" \
+LABEL org.opencontainers.image.title="zerotier-planet-2.0" \
       org.opencontainers.image.description="Self-hosted ZeroTier planet and controller with TLS and hardened defaults" \
-      org.opencontainers.image.source="https://github.com/ban-sky/docker-zerotier-planet-2.0" \
+      org.opencontainers.image.source="https://github.com/ban-sky/zerotier-planet-2.0" \
       org.opencontainers.image.licenses="GPL-3.0-only AND MPL-2.0 AND LicenseRef-ZeroTier-Source-Available"
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -195,8 +195,8 @@ COPY --from=ui-builder /src/ztncui /app/ztncui
 COPY patch/entrypoint.sh /app/entrypoint.sh
 COPY patch/http_server.js /app/http_server.js
 COPY patch/configure-moon.js /app/configure-moon.js
-COPY LICENSE /usr/share/licenses/docker-zerotier-planet/LICENSE
-COPY NOTICE /usr/share/licenses/docker-zerotier-planet/NOTICE
+COPY LICENSE /usr/share/licenses/zerotier-planet-2.0/LICENSE
+COPY NOTICE /usr/share/licenses/zerotier-planet-2.0/NOTICE
 
 # The CLI lives in /usr/sbin; these links match what `make install` creates and
 # let users run `docker exec ... zerotier-cli` (#196). Create the data directory

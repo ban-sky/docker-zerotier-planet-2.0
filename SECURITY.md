@@ -10,7 +10,7 @@ Older tags are not maintained.
 Please **do not** open a public issue for security problems.
 
 Use GitHub's private vulnerability reporting:
-<https://github.com/ban-sky/docker-zerotier-planet-2.0/security/advisories/new>
+<https://github.com/ban-sky/zerotier-planet-2.0/security/advisories/new>
 
 Include, if possible:
 

@@ -76,7 +76,6 @@ const messages = {
 
     // Sign-in and the public landing page.
     'login.title': '登录',
-    'login.subtitle': '使用 /app/config/admin-password 中的初始密码登录。',
     'login.backToPlanet': '返回 planet 概览',
     'frontDoor.title': 'ZeroTier Planet',
     'frontDoor.subtitle': '自托管根服务器与网络控制器，一个容器即可运行。',
@@ -385,7 +384,6 @@ const messages = {
 
     // Sign-in and the public landing page.
     'login.title': 'Sign in',
-    'login.subtitle': 'Sign in with the password in /app/config/admin-password.',
     'login.backToPlanet': 'Back to the planet overview',
     'frontDoor.title': 'ZeroTier Planet',
     'frontDoor.subtitle': 'Self-hosted root server and network controller in one container.',

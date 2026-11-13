@@ -22,6 +22,7 @@ html(lang=pageLang)
     meta(name='viewport', content='width=device-width, initial-scale=1')
     meta(name='color-scheme', content='light')
     title= (title || 'ZeroTier') + t('app.titleSuffix')
+    link(rel='icon', type='image/svg+xml', href='/images/zt-mark.svg')
     link(rel='stylesheet', href='/stylesheets/app.css')
     script(src='/js/app.js', defer)
   body
@@ -29,7 +30,7 @@ html(lang=pageLang)
     header.site-header
       .container.header-inner
         a.brand(href='/')
-          span.brand-mark ZT
+          img.brand-mark(src='/images/zt-mark.svg', alt='', width='38', height='38')
           span.brand-copy
             strong ZeroTier
             span= t('brand.planetController')

@@ -2,7 +2,7 @@
   "name": "ztncui",
   "version": "0.9.0",
   "private": true,
-  "description": "ZeroTier network controller UI (hardened, modernized fork used by docker-zerotier-planet)",
+  "description": "ZeroTier network controller UI (hardened, modernized fork used by zerotier-planet-2.0)",
   "license": "GPL-3.0-only",
   "scripts": {
     "start": "node ./bin/www",

@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.4.2] - 2026-11-13
+
+### 变更
+
+- **项目更名**：仓库由 `docker-zerotier-planet-2.0` 改为 `zerotier-planet-2.0`；镜像同步改为
+  `ghcr.io/ban-sky/zerotier-planet` 与 `lonelyx/zerotier-planet`，镜像 tag 与版本号一致、
+  **不带 `v`**（git tag / Release 仍是 `v2.4.2`）。旧仓库地址与旧镜像名继续可用。
+- **图标与界面统一使用 ZeroTier 官方品牌标识**：琥珀色 `#FFB25B` + 深藏青 `#161C24` 的
+  「横梁 + 轨道环 + 尾柱」字形。1Panel 商店图标、管理界面顶栏与登录页改用同一份
+  `/images/zt-mark.svg`（矢量，随尺寸缩放不糊），网页图标（favicon）同步替换。
+- **登录页去掉密码来源提示**：页面不再出现 `/app/config/admin-password` 字样；
+  取初始密码的说明移到 1Panel 应用文档的「初始密码」一节（终端 `cat`、宿主机 `find`、
+  `docker exec` 三种取法，以及忘记密码后的重置方法）。
+
+### 文档
+
+- 1Panel 应用文档（中/英）新增「初始密码」章节，并说明 2.4.2 起的镜像名与旧版本目录的差异。
+- README（中/英）顶部增加更名说明，镜像 tag 语义改为「镜像不带 `v`、git tag 带 `v`」。
+
 ## [2.4.1] - 2026-11-13
 
 ### 变更
@@ -12,7 +31,7 @@
 
 ### 文档
 
-- README（中/英）版本引用更新为 `v2.4.1`，`CHANGELOG` 增补本节。
+- README（中/英）版本引用更新为 `v2.4.2`，`CHANGELOG` 增补本节。
 
 ## [2.4.0] - 2026-11-13
 
@@ -74,8 +93,8 @@
 
 ### 镜像
 
-- `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0`（发布时同时打 `latest`）
-- `docker.io/lonelyx/docker-zerotier-planet-2.0:v2.3.0`（发布时同时打 `latest`）
+- `ghcr.io/ban-sky/zerotier-planet:v2.3.0`（发布时同时打 `latest`）
+- `docker.io/lonelyx/zerotier-planet:v2.3.0`（发布时同时打 `latest`）
 
 ## [2.2.0] - 2026-11-12
 
@@ -104,8 +123,8 @@
 
 ### 镜像
 
-- `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0`（发布时同时打 `latest`）
-- `docker.io/lonelyx/docker-zerotier-planet-2.0:v2.2.0`（发布时同时打 `latest`）
+- `ghcr.io/ban-sky/zerotier-planet:v2.2.0`（发布时同时打 `latest`）
+- `docker.io/lonelyx/zerotier-planet:v2.2.0`（发布时同时打 `latest`）
 
 ### 文档
 
@@ -126,13 +145,13 @@
 - Release 附件新增 `1panel-app-<版本>.tar.gz`，并纳入 `SHA256SUMS`。
 - **Docker Hub 镜像同步**：`image-build` 与 `release` 各增加一步，用
   `docker buildx imagetools create` 直接复制 manifest（不重新构建），把同名 tag 镜像到
-  Docker Hub。本仓库已启用，镜像地址 `docker.io/lonelyx/docker-zerotier-planet-2.0`，
+  Docker Hub。本仓库已启用，镜像地址 `docker.io/lonelyx/zerotier-planet`，
   与 GHCR 逐层一致；未配置 `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` 时自动跳过。
 
 ### 镜像
 
-- `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.1.0`（发布时同时打 `latest`）
-- `docker.io/lonelyx/docker-zerotier-planet-2.0:v2.1.0`（发布时同时打 `latest`）
+- `ghcr.io/ban-sky/zerotier-planet:v2.1.0`（发布时同时打 `latest`）
+- `docker.io/lonelyx/zerotier-planet:v2.1.0`（发布时同时打 `latest`）
 - 两个 registry 上的 `v2.1.0` 均为 OCI image index，平台 `linux/amd64` + `linux/arm64`，
   digest `sha256:dd1a860079fc2403639442aae3a650704fd839de8ebe2a25998f76b37414cee8`
   （amd64 子 manifest `sha256:397689b7e33e…`，arm64 子 manifest `sha256:eceb615b702f…`）。

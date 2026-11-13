@@ -1,0 +1,114 @@
+additionalProperties:
+  formFields:
+    - default: ""
+      edit: true
+      envKey: IP_ADDR4
+      labelEn: "Public IPv4 address"
+      labelZh: "公网 IPv4 地址"
+      required: true
+      rule: paramCommon
+      type: text
+      label:
+        en: "Public IPv4 address"
+        es-es: "Dirección IPv4 pública"
+        ja: "公開 IPv4 アドレス"
+        ms: "Alamat IPv4 awam"
+        pt-br: "Endereço IPv4 público"
+        ru: "Публичный IPv4-адрес"
+        ko: "공인 IPv4 주소"
+        zh-Hant: "公網 IPv4 位址"
+        zh: "公网 IPv4 地址"
+        tr: "Genel IPv4 adresi"
+    - default: ""
+      edit: true
+      envKey: IP_ADDR6
+      labelEn: "Public IPv6 address (optional)"
+      labelZh: "公网 IPv6 地址（可选）"
+      required: false
+      type: text
+      label:
+        en: "Public IPv6 address (optional)"
+        es-es: "Dirección IPv6 pública (opcional)"
+        ja: "公開 IPv6 アドレス（任意）"
+        ms: "Alamat IPv6 awam (pilihan)"
+        pt-br: "Endereço IPv6 público (opcional)"
+        ru: "Публичный IPv6-адрес (необязательно)"
+        ko: "공인 IPv6 주소(선택)"
+        zh-Hant: "公網 IPv6 位址（選填）"
+        zh: "公网 IPv6 地址（可选）"
+        tr: "Genel IPv6 adresi (isteğe bağlı)"
+    - default: "Asia/Shanghai"
+      edit: true
+      envKey: TZ
+      labelEn: "Time zone"
+      labelZh: "时区"
+      required: false
+      type: text
+      label:
+        en: "Time zone"
+        es-es: "Zona horaria"
+        ja: "タイムゾーン"
+        ms: "Zon waktu"
+        pt-br: "Fuso horário"
+        ru: "Часовой пояс"
+        ko: "시간대"
+        zh-Hant: "時區"
+        zh: "时区"
+        tr: "Saat dilimi"
+    - default: 9994
+      edit: true
+      envKey: PANEL_APP_PORT_ZT
+      labelEn: "ZeroTier port (UDP)"
+      labelZh: "ZeroTier 端口（UDP）"
+      required: true
+      rule: paramPort
+      type: number
+      label:
+        en: "ZeroTier port (UDP)"
+        es-es: "Puerto de ZeroTier (UDP)"
+        ja: "ZeroTier ポート（UDP）"
+        ms: "Port ZeroTier (UDP)"
+        pt-br: "Porta do ZeroTier (UDP)"
+        ru: "Порт ZeroTier (UDP)"
+        ko: "ZeroTier 포트(UDP)"
+        zh-Hant: "ZeroTier 埠（UDP）"
+        zh: "ZeroTier 端口（UDP）"
+        tr: "ZeroTier bağlantı noktası (UDP)"
+    - default: 3443
+      edit: true
+      envKey: PANEL_APP_PORT_HTTPS
+      labelEn: "Admin UI port (HTTPS)"
+      labelZh: "管理界面端口（HTTPS）"
+      required: true
+      rule: paramPort
+      type: number
+      label:
+        en: "Admin UI port (HTTPS)"
+        es-es: "Puerto de la interfaz de administración (HTTPS)"
+        ja: "管理画面ポート（HTTPS）"
+        ms: "Port UI pentadbir (HTTPS)"
+        pt-br: "Porta da interface de administração (HTTPS)"
+        ru: "Порт панели управления (HTTPS)"
+        ko: "관리 UI 포트(HTTPS)"
+        zh-Hant: "管理介面埠（HTTPS）"
+        zh: "管理界面端口（HTTPS）"
+        tr: "Yönetim arayüzü bağlantı noktası (HTTPS)"
+    - default: 3000
+      edit: true
+      envKey: PANEL_APP_PORT_FILE
+      labelEn: "File server port (HTTPS)"
+      labelZh: "文件服务器端口（HTTPS）"
+      required: true
+      rule: paramPort
+      type: number
+      label:
+        en: "File server port (HTTPS)"
+        es-es: "Puerto del servidor de archivos (HTTPS)"
+        ja: "ファイルサーバーポート（HTTPS）"
+        ms: "Port pelayan fail (HTTPS)"
+        pt-br: "Porta do servidor de arquivos (HTTPS)"
+        ru: "Порт файлового сервера (HTTPS)"
+        ko: "파일 서버 포트(HTTPS)"
+        zh-Hant: "檔案伺服器埠（HTTPS）"
+        zh: "文件服务器端口（HTTPS）"
+        tr: "Dosya sunucusu bağlantı noktası (HTTPS)"

@@ -33,7 +33,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/zerotier-planet
   ZT_VERSION: "1.16.2"
   ZT_COMMIT: "fc5c3ec22090b5b2a0f274e863651fe9ca489bf4"
   ZTNCUI_COMMIT: "1b2284864de48d2dcae22582fff122fe24909c3d"
@@ -101,7 +101,7 @@ jobs:
       # Optional: mirror the same tags to Docker Hub.
       #
       # Setup (one-off):
-      #   1. Create the repository on Docker Hub, e.g. <user>/docker-zerotier-planet-2.0
+      #   1. Create the repository on Docker Hub, e.g. <user>/zerotier-planet-2.0
       #   2. Docker Hub → Account settings → Security → New access token (Read & Write)
       #   3. GitHub → Settings → Secrets and variables → Actions:
       #        DOCKERHUB_USERNAME = your Docker Hub username
@@ -121,7 +121,7 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           set -euo pipefail
-          dst="docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0"
+          dst="docker.io/${DOCKERHUB_USERNAME}/zerotier-planet"
           echo "$TAGS" | while IFS= read -r src; do
             [ -n "$src" ] || continue
             tag="${src##*:}"

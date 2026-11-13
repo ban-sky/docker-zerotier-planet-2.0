@@ -1,6 +1,6 @@
 services:
   zerotier-planet:
-    image: docker-zerotier-planet-2.0:latest
+    image: ghcr.io/ban-sky/zerotier-planet:2.4.2
     build:
       context: .
       args:

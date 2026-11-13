@@ -19,14 +19,15 @@
 #
 # Try it first with --dry-run, then add the cron entry:
 #
-#   /opt/docker-zerotier-planet-2.0/scripts/1panel-scheduled-update.sh --quiet
+#   /opt/zerotier-planet-2.0/scripts/1panel-scheduled-update.sh --quiet
 #
 # Exit codes: 0 = success / already current, 1 = error, 2 = usage error.
 #
 set -Eeuo pipefail
 
 APP_KEY=zerotier-planet
-REPO="ban-sky/docker-zerotier-planet-2.0"
+REPO="ban-sky/zerotier-planet-2.0"
+IMAGE="ghcr.io/ban-sky/zerotier-planet"
 DEFAULT_PANEL_DIR=/opt/1panel
 DEFAULT_BRANCH=main
 
@@ -79,7 +80,7 @@ Typical 1Panel cron job:
   3. Schedule: daily, or every 6 hours.
 
 Without a checkout, paste this into the cron command instead:
-  curl -fsSL https://raw.githubusercontent.com/ban-sky/docker-zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh -o /tmp/ztp-1panel-update.sh && bash /tmp/ztp-1panel-update.sh --quiet
+  curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh -o /tmp/ztp-1panel-update.sh && bash /tmp/ztp-1panel-update.sh --quiet
 
 Exit codes: 0 success or already current, 1 error, 2 usage error.
 EOF
@@ -186,7 +187,7 @@ if [ "$source_mode" = release ]; then
     exit 0
   fi
 
-  archive="1panel-app-${tag}.tar.gz"
+  archive="1panel-app-${version}.tar.gz"
   base="https://github.com/$REPO/releases/download/$tag"
   log "下载 $archive ..."
   fetch "$(gh_url "$base/$archive")" "$tmp/$archive"
@@ -213,7 +214,7 @@ else
   version="$( cd "$staged" && ls -1d [0-9]* 2>/dev/null | sort -V | tail -n1 )" \
     || version=""
   [ -n "$version" ] || die "分支 $branch 的应用包里没有版本目录"
-  tag="v$version"
+  tag="$version"
 
   if [ -n "$installed" ] && not_older "$installed" "$version"; then
     log "已是 $installed（分支最新 $version），无需更新"
@@ -260,7 +261,7 @@ fi
 # ---------------------------------------------------------------------------
 if [ "$restart" -eq 1 ] && [ -d "$apps_root" ]; then
   command -v docker >/dev/null 2>&1 || die "应用包已更新，但缺少 docker，无法重启应用"
-  image_ref="ghcr.io/$REPO:v$version"
+  image_ref="$IMAGE:$version"
   found=0
   for compose in "$apps_root"/*/docker-compose.yml; do
     [ -f "$compose" ] || continue

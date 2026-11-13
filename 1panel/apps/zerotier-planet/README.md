@@ -1,7 +1,7 @@
 ## 产品介绍
 
 在 Docker 中自建 **ZeroTier planet（行星服务器）** 与 **ztncui 网络控制器**，对应
-[docker-zerotier-planet 2.0](https://github.com/ban-sky/docker-zerotier-planet-2.0) 项目。
+[docker-zerotier-planet 2.0](https://github.com/ban-sky/zerotier-planet-2.0) 项目。
 内置 ZeroTier One 1.16.2，默认开启 TLS 与安全加固项。
 
 ## 主要功能
@@ -10,6 +10,7 @@
 - 首次启动生成随机管理员密码，首次登录强制改密，改密后密码文件自动删除。
 - 管理界面与文件服务器默认 HTTPS（自签 ECDSA P-256 证书）。
 - 管理界面内置简体中文与英文，默认简体中文，右上角可切换。
+- 图标与界面使用 ZeroTier 官方品牌标识（琥珀色 `#FFB25B` + 深藏青 `#161C24`）。
 - planet 下载走 `Authorization: Bearer` 鉴权，不再把密钥放在 URL 里。
 - 数据持久化在应用目录的 `data/`（`config`、`dist`、`one`）。
 
@@ -17,8 +18,23 @@
 
 1. 填入公网 IPv4（必填）、可选 IPv6，以及三个端口。
 2. 安装完成后访问 `https://<服务器IP>:<管理界面端口>`。
-3. 首次登录：进入应用「终端」，执行
-   `cat /app/config/admin-password` 取初始密码，用 `admin` 登录并立即改密。
+3. 首次登录：用 `admin` 与「初始密码」一节给出的密码登录，登录后立即设置新密码。
+
+## 初始密码
+
+初始密码由容器首次启动时随机生成，**不会打印到日志**，也不会出现在页面上。三种取法任选：
+
+- 1Panel 应用「终端」里执行：`cat /app/config/admin-password`
+- 宿主机上直接读文件：
+  `sudo find /opt/1panel/apps -maxdepth 6 -name admin-password -exec cat {} \;`
+- 用 docker 进容器读：`docker exec <容器名> cat /app/config/admin-password`
+
+登录后必须先改密码，改完该文件会被删除；之后再忘记密码，删掉
+`data/config/admin-password` 同级的 `data/config/ztncui-passwd` 并重启容器即可重新生成
+（会覆盖现有管理员密码）。
+
+> 2.4.2 起镜像名为 `ghcr.io/ban-sky/zerotier-planet:<版本号>`（不带 `v`）；更早的版本目录仍指向旧的
+> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v<版本号>`，两者都可用。
 
 ## 自动更新（计划任务）
 
@@ -36,7 +52,7 @@ sudo ./1panel-scheduled-update.sh --source branch \
 ```
 
 脚本会更新本应用包并重启已安装实例；`--no-restart` 只更新应用包。详细参数见
-[项目 README](https://github.com/ban-sky/docker-zerotier-planet-2.0#计划任务自动跟进最新版本)。
+[项目 README](https://github.com/ban-sky/zerotier-planet-2.0#计划任务自动跟进最新版本)。
 
 ## 端口
 

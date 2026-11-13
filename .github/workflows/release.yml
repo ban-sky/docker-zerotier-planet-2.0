@@ -32,7 +32,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/zerotier-planet
   ZT_VERSION: "1.16.2"
   ZT_COMMIT: "fc5c3ec22090b5b2a0f274e863651fe9ca489bf4"
   ZTNCUI_COMMIT: "1b2284864de48d2dcae22582fff122fe24909c3d"
@@ -45,6 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      image_tag: ${{ steps.version.outputs.image_tag }}
       image: ${{ steps.version.outputs.image }}
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -64,8 +65,9 @@ jobs:
             *) echo "::error::version must start with 'v' (got '$version')"; exit 1 ;;
           esac
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${version#v}" >> "$GITHUB_OUTPUT"
           echo "image=${REGISTRY}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "Releasing $version as ${REGISTRY}/${IMAGE_NAME}"
+          echo "Releasing $version as ${REGISTRY}/${IMAGE_NAME}:${version#v}"
 
       - name: Choose architectures
         id: matrix
@@ -111,9 +113,9 @@ jobs:
           platforms: ${{ matrix.platform }}
           load: true
           push: false
-          tags: ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+          tags: ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.image_tag }}-${{ matrix.arch }}
           labels: |
-            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.image_tag }}
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             ZT_VERSION=${{ env.ZT_VERSION }}
@@ -130,15 +132,15 @@ jobs:
       - name: Package the image as a docker-load archive
         env:
           ARCH: ${{ matrix.arch }}
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
         run: |
           set -euo pipefail
           # docker save keeps the local tag; use the plain version so a user can
           # `docker load` and immediately run `docker run <image>:<version>`.
-          local_tag="${IMAGE}:${VERSION}"
-          docker tag "${IMAGE}:${VERSION}-${ARCH}" "$local_tag"
-          tarball="docker-zerotier-planet-2.0-${VERSION}-${ARCH}.tar.gz"
+          local_tag="${IMAGE}:${TAG}"
+          docker tag "${IMAGE}:${TAG}-${ARCH}" "$local_tag"
+          tarball="zerotier-planet-2.0-${TAG}-${ARCH}.tar.gz"
           docker save "$local_tag" | gzip -6 > "$tarball"
           ls -lh "$tarball"
           sha256sum "$tarball" > "$tarball.sha256"
@@ -147,19 +149,19 @@ jobs:
       - name: Write archive instructions
         env:
           ARCH: ${{ matrix.arch }}
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
           PLATFORM: ${{ matrix.platform }}
         run: |
           set -euo pipefail
-          cat > "LOAD-${ARCH}-${VERSION}.txt" <<EOF
-          docker-zerotier-planet 2.0 ($VERSION, ${PLATFORM})
+          cat > "LOAD-${ARCH}-${TAG}.txt" <<EOF
+          zerotier-planet-2.0 ($TAG, ${PLATFORM})
 
           Load the image:
-            docker load < docker-zerotier-planet-2.0-${VERSION}-${ARCH}.tar.gz
+            docker load < zerotier-planet-2.0-${TAG}-${ARCH}.tar.gz
 
           The archive restores the tag:
-            ${IMAGE}:${VERSION}
+            ${IMAGE}:${TAG}
 
           Run it (set IP_ADDR4 to the address your clients can reach):
             docker run -d --name zerotier-planet --restart unless-stopped \\
@@ -168,7 +170,7 @@ jobs:
               -v "\$PWD/data/config:/app/config" \\
               -v "\$PWD/data/dist:/app/dist" \\
               -v "\$PWD/data/one:/var/lib/zerotier-one" \\
-              ${IMAGE}:${VERSION}
+              ${IMAGE}:${TAG}
 
           The initial admin password is printed by:
             docker exec zerotier-planet cat /app/config/admin-password
@@ -177,23 +179,23 @@ jobs:
       - name: Push the arch image to GHCR
         env:
           ARCH: ${{ matrix.arch }}
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
         run: |
           set -euo pipefail
-          docker push "${IMAGE}:${VERSION}-${ARCH}"
+          docker push "${IMAGE}:${TAG}-${ARCH}"
 
       - name: Remove the local tag
         if: always()
-        run: docker image rm -f "${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}" || true
+        run: docker image rm -f "${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.image_tag }}-${{ matrix.arch }}" || true
 
       - name: Upload packaged image
         uses: actions/upload-artifact@v4
         with:
           name: image-${{ matrix.arch }}
           path: |
-            docker-zerotier-planet-2.0-*.tar.gz
-            docker-zerotier-planet-2.0-*.tar.gz.sha256
+            zerotier-planet-2.0-*.tar.gz
+            zerotier-planet-2.0-*.tar.gz.sha256
             LOAD-*.txt
           retention-days: 7
           if-no-files-found: error
@@ -245,12 +247,12 @@ jobs:
         run: |
           set -euo pipefail
           ls -lh dist
-          docker load < dist/docker-zerotier-planet-2.0-*.tar.gz
+          docker load < dist/zerotier-planet-2.0-*.tar.gz
 
       - name: Start the container
         env:
           IMAGE: ${{ needs.prepare.outputs.image }}
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/zt/config /tmp/zt/dist /tmp/zt/one
@@ -260,7 +262,7 @@ jobs:
             -v /tmp/zt/config:/app/config \
             -v /tmp/zt/dist:/app/dist \
             -v /tmp/zt/one:/var/lib/zerotier-one \
-            "${IMAGE}:${VERSION}"
+            "${IMAGE}:${TAG}"
           for i in $(seq 1 90); do
             if docker exec zt-smoke /usr/sbin/zerotier-cli info >/dev/null 2>&1; then
               echo "zerotier-one is up after ${i}s"; exit 0
@@ -360,6 +362,14 @@ jobs:
             --data 'user=admin&password=definitely-wrong')
           echo "opaque origin login: $code"
           [ "$code" != "403" ]
+          # the brand mark is served and the login page no longer points at the
+          # password file (the hint lives in the 1Panel app documentation)
+          curl -ksf https://127.0.0.1:3443/images/zt-mark.svg -o /tmp/zt-mark.svg
+          grep -q '#FFC078' /tmp/zt-mark.svg
+          grep -q 'zt-mark.svg' /tmp/login-zh.html
+          if grep -q 'admin-password' /tmp/login-zh.html /tmp/login-en.html; then
+            echo "::error::the login page still mentions the password file"; exit 1
+          fi
 
       - name: Verify the file server requires authentication
         run: |
@@ -433,12 +443,12 @@ jobs:
       # `tar -xzf` into .../resource/apps/local/ drops it in place.
       - name: Package the 1Panel app
         env:
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
         run: |
           set -euo pipefail
-          tar -czf "dist/1panel-app-${VERSION}.tar.gz" -C 1panel/apps zerotier-planet
-          tar -tzf "dist/1panel-app-${VERSION}.tar.gz" | head -20
-          ls -lh "dist/1panel-app-${VERSION}.tar.gz"
+          tar -czf "dist/1panel-app-${TAG}.tar.gz" -C 1panel/apps zerotier-planet
+          tar -tzf "dist/1panel-app-${TAG}.tar.gz" | head -20
+          ls -lh "dist/1panel-app-${TAG}.tar.gz"
 
       - name: Attach the 1Panel cron helper
         run: |
@@ -459,11 +469,12 @@ jobs:
       - name: Write the release notes
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
         run: |
           set -euo pipefail
           {
-            echo "# docker-zerotier-planet 2.0 — ${VERSION}"
+            echo "# zerotier-planet-2.0 — ${VERSION}"
             echo
             echo "Self-hosted ZeroTier planet + network controller, based on"
             echo "[xubiaolin/docker-zerotier-planet](https://github.com/xubiaolin/docker-zerotier-planet)."
@@ -496,34 +507,34 @@ jobs:
             echo "## Load and run"
             echo
             echo '```bash'
-            echo "docker load < docker-zerotier-planet-2.0-${VERSION}-amd64.tar.gz"
+            echo "docker load < zerotier-planet-2.0-${TAG}-amd64.tar.gz"
             echo "docker run -d --name zerotier-planet --restart unless-stopped \\"
             echo "  -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp \\"
             echo "  -e IP_ADDR4=203.0.113.10 \\"
             echo "  -v \"\$PWD/data/config:/app/config\" \\"
             echo "  -v \"\$PWD/data/dist:/app/dist\" \\"
             echo "  -v \"\$PWD/data/one:/var/lib/zerotier-one\" \\"
-            echo "  ${IMAGE}:${VERSION}"
+            echo "  ${IMAGE}:${TAG}"
             echo '```'
             echo
             echo "## Images"
             echo
             echo "| Registry | Reference |"
             echo "| --- | --- |"
-            echo "| GHCR | \`${IMAGE}:${VERSION}\` |"
+            echo "| GHCR | \`${IMAGE}:${TAG}\` |"
             if [ -n "${DOCKERHUB_USERNAME:-}" ]; then
-              echo "| Docker Hub | \`docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0:${VERSION}\` |"
+              echo "| Docker Hub | \`docker.io/${DOCKERHUB_USERNAME}/zerotier-planet:${TAG}\` |"
             fi
             echo
             echo "Both references point at the same multi-arch manifest (\`linux/amd64\` + \`linux/arm64\`)."
             echo
             echo "## 1Panel"
             echo
-            echo "This release also ships \`1panel-app-${VERSION}.tar.gz\`, a local app package for"
+            echo "This release also ships \`1panel-app-${TAG}.tar.gz\`, a local app package for"
             echo "[1Panel](https://1panel.cn/):"
             echo
             echo '```bash'
-            echo "sudo tar -xzf 1panel-app-${VERSION}.tar.gz -C /opt/1panel/resource/apps/local"
+            echo "sudo tar -xzf 1panel-app-${TAG}.tar.gz -C /opt/1panel/resource/apps/local"
             echo '```'
             echo
             echo "Then refresh the app list in the panel (App Store → Update app list) and install"
@@ -547,10 +558,12 @@ jobs:
       - name: Write the build provenance file
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
         run: |
           set -euo pipefail
           {
             echo "version=${VERSION}"
+            echo "image_tag=${TAG}"
             echo "repo=${GITHUB_REPOSITORY}"
             echo "commit=${GITHUB_SHA}"
             echo "zerotier_version=${ZT_VERSION}"
@@ -567,7 +580,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
-          name: docker-zerotier-planet 2.0 ${{ needs.prepare.outputs.version }}
+          name: zerotier-planet-2.0 ${{ needs.prepare.outputs.version }}
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
@@ -581,22 +594,22 @@ jobs:
 
       - name: Publish the multi-arch image to GHCR
         env:
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
           tags=""
-          if docker manifest inspect "${IMAGE}:${VERSION}-amd64" >/dev/null 2>&1; then
-            tags="${IMAGE}:${VERSION}-amd64"
+          if docker manifest inspect "${IMAGE}:${TAG}-amd64" >/dev/null 2>&1; then
+            tags="${IMAGE}:${TAG}-amd64"
           fi
-          if docker manifest inspect "${IMAGE}:${VERSION}-arm64" >/dev/null 2>&1; then
-            tags="$tags ${IMAGE}:${VERSION}-arm64"
+          if docker manifest inspect "${IMAGE}:${TAG}-arm64" >/dev/null 2>&1; then
+            tags="$tags ${IMAGE}:${TAG}-arm64"
           fi
           [ -n "$tags" ] || { echo "::error::no per-arch images found in GHCR"; exit 1; }
           echo "creating manifest for: $tags"
-          docker buildx imagetools create -t "${IMAGE}:${VERSION}" -t "${IMAGE}:latest" $tags
-          docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+          docker buildx imagetools create -t "${IMAGE}:${TAG}" -t "${IMAGE}:latest" $tags
+          docker buildx imagetools inspect "${IMAGE}:${TAG}"
 
       # Optional: publish the same multi-arch image on Docker Hub.
       # See .github/workflows/image-build.yml for the one-off setup
@@ -604,13 +617,13 @@ jobs:
       - name: Mirror the release to Docker Hub
         if: env.DOCKERHUB_TOKEN != ''
         env:
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.image_tag }}
           IMAGE: ${{ needs.prepare.outputs.image }}
         run: |
           set -euo pipefail
           echo "${DOCKERHUB_TOKEN}" | docker login docker.io -u "${DOCKERHUB_USERNAME}" --password-stdin
-          dst="docker.io/${DOCKERHUB_USERNAME}/docker-zerotier-planet-2.0"
-          for tag in "${VERSION}" latest; do
+          dst="docker.io/${DOCKERHUB_USERNAME}/zerotier-planet"
+          for tag in "${TAG}" latest; do
             docker buildx imagetools create -t "${dst}:${tag}" "${IMAGE}:${tag}"
           done
-          docker buildx imagetools inspect "${dst}:${VERSION}"
+          docker buildx imagetools inspect "${dst}:${TAG}"

@@ -6,8 +6,8 @@
 extends login_layout
 
 block login_content
+  img.auth-logo(src='/images/zt-mark.svg', alt='', width='60', height='60')
   h1.auth-title= t('login.title')
-  p.auth-subtitle= t('login.subtitle')
 
   if message
     .alert.alert-info= message

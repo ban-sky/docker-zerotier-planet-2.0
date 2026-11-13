@@ -26,9 +26,9 @@ additionalProperties:
   type: tool
   crossVersionUpdate: true
   limit: 0
-  website: https://github.com/ban-sky/docker-zerotier-planet-2.0
-  github: https://github.com/ban-sky/docker-zerotier-planet-2.0
-  document: https://github.com/ban-sky/docker-zerotier-planet-2.0#readme
+  website: https://github.com/ban-sky/zerotier-planet-2.0
+  github: https://github.com/ban-sky/zerotier-planet-2.0
+  document: https://github.com/ban-sky/zerotier-planet-2.0#readme
   architectures:
     - amd64
     - arm64

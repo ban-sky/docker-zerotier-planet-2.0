@@ -14,7 +14,7 @@ DOWNLOAD_VERSION=""
 KEEP_OLD=0
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-RELEASES_URL="https://github.com/ban-sky/docker-zerotier-planet-2.0/releases/download"
+RELEASES_URL="https://github.com/ban-sky/zerotier-planet-2.0/releases/download"
 
 usage() {
     cat <<'EOF'
@@ -22,7 +22,7 @@ usage() {
 
   --panel-dir DIR        1Panel 安装目录，默认 /opt/1panel
   --download VERSION     从 GitHub Releases 下载 1panel-app-VERSION.tar.gz
-                         （例如 --download v2.1.0），而不是使用仓库内的文件
+                         （例如 --download v2.4.2 或 2.4.2），而不是使用仓库内的文件
   --keep-old             保留上一次安装的备份（默认保留，仅提示路径）
   -h, --help             显示帮助
 
@@ -59,7 +59,12 @@ trap cleanup EXIT
 if [ -n "$DOWNLOAD_VERSION" ]; then
     command -v curl >/dev/null 2>&1 || die "需要 curl 下载应用包"
     TMP_DIR="$(mktemp -d)"
-    url="$RELEASES_URL/$DOWNLOAD_VERSION/1panel-app-$DOWNLOAD_VERSION.tar.gz"
+    version_tag="$DOWNLOAD_VERSION"
+    case "$version_tag" in
+      v[0-9]*) version_asset="${version_tag#v}" ;;
+      *) version_asset="$version_tag"; version_tag="v$version_tag" ;;
+    esac
+    url="$RELEASES_URL/$version_tag/1panel-app-$version_asset.tar.gz"
     log "下载 $url"
     curl -fsSL "$url" -o "$TMP_DIR/pkg.tar.gz" || die "下载失败: $url"
     tar -xzf "$TMP_DIR/pkg.tar.gz" -C "$TMP_DIR"
