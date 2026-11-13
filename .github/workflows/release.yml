@@ -388,8 +388,12 @@ jobs:
 
           # The bootstrap password is one-time: replace it first, which also
           # exercises the forced password change.
-          pass=$(docker exec zt-smoke cat /app/config/admin-password)
-          login "$pass"
+          # The password file is a short human-readable block, not a bare secret.
+          pass=$(docker exec zt-smoke sed -n 's/^password: //p' /app/config/admin-password)
+          echo "bootstrap password length: ${#pass}"
+          [ "${#pass}" -ge 20 ]
+          location=$(login "$pass")
+          echo "bootstrap login lands on: $location"
           status=$(curl -ks -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' -X POST \
             --data-urlencode "password1=$newpass" --data-urlencode "password2=$newpass" \
             https://127.0.0.1:3443/users/admin/password)
