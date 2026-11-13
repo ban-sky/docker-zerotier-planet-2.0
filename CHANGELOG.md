@@ -2,6 +2,22 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.4.4] - 2026-11-13
+
+### 新增
+
+- **文档顶部新增「一键更新 1Panel 应用商店包」**：一行 `curl … | sudo bash -s -- --quiet` 直接执行，
+  把最新版本同步进 `/opt/1panel/resource/apps/local/`；另给「固定到最新 Release 资产」与
+  `--dry-run` 预演两种写法，并说明会自动校验 `SHA256SUMS`、保留最近 5 个备份、重启已装实例。
+- 1Panel 应用文档（中/英）的「自动更新」章节同样置顶这条一行命令；Release 正文的 1Panel 段
+  也加了一行式更新示例。
+- 新增 `1panel/apps/zerotier-planet/2.4.4/`（镜像 `docker.io/lonelyx/zerotier-planet:2.4.4`）。
+
+### 变更
+
+- `build.sh`、`deploy.sh`、`docker-compose.yml`、`scripts/migrate-from-upstream.sh` 的默认镜像
+  版本推进到 `2.4.4`。
+
 ## [2.4.3] - 2026-11-13
 
 ### 变更

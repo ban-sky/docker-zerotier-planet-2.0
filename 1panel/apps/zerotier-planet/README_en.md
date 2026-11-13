@@ -40,10 +40,15 @@ and restart the container to generate a fresh one (this replaces the existing ad
 
 ## Automatic updates (cron job)
 
-Schedule `scripts/1panel-scheduled-update.sh` from the repository as a 1Panel
-**Cron job → Shell script** entry. Like [okxlin/appstore](https://github.com/okxlin/appstore),
-it syncs the package into `/opt/1panel/resource/apps/local/` so the panel lists the
-new version:
+One line syncs the newest release into the local store — **paste and run it**, or put it
+in a **Cron job → Shell script** entry:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --quiet
+```
+
+Like [okxlin/appstore](https://github.com/okxlin/appstore), it syncs the package into
+`/opt/1panel/resource/apps/local/` so the panel lists the new version. To run it by hand:
 
 ```bash
 # the script is also attached to every Release

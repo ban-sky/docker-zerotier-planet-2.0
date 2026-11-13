@@ -27,7 +27,7 @@ umask 077
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 DOCKER="${DOCKER:-docker}"
 CONTAINER_NAME="${CONTAINER_NAME:-myztplanet}"
-IMAGE="${IMAGE:-docker.io/lonelyx/zerotier-planet:2.4.3}"
+IMAGE="${IMAGE:-docker.io/lonelyx/zerotier-planet:2.4.4}"
 APT_MIRROR="${APT_MIRROR:-http://mirrors.ustc.edu.cn}"
 GH_MIRROR="${GH_MIRROR:-https://ghfast.top/https://github.com}"
 GH_FALLBACK="${GH_FALLBACK:-https://github.com}"
@@ -73,7 +73,7 @@ Options:
   --data DIR         existing data root (default: derived from the container)
   --target-data DIR  new data root (default: reuse --data in place); copied
                      from the old root and left there for rollback
-  --image IMAGE      image to build/use (default: docker.io/lonelyx/zerotier-planet:2.4.3)
+  --image IMAGE      image to build/use (default: docker.io/lonelyx/zerotier-planet:2.4.4)
   --pull             docker pull IMAGE instead of building (for GHCR images)
   --backup DIR       backup directory (default: ./backups)
   --ipv4 ADDR        public IPv4 address or hostname (default: old container env)

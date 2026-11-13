@@ -538,6 +538,14 @@ jobs:
             echo
             echo "## 1Panel"
             echo
+            echo "The app package above can be installed by hand, or you can let the cron helper"
+            echo "keep the local store current — one line, no checkout:"
+            echo
+            echo '```bash'
+            echo "curl -fsSL https://github.com/ban-sky/zerotier-planet-2.0/releases/latest/download/1panel-scheduled-update.sh \\"
+            echo "  | sudo bash -s -- --quiet"
+            echo '```'
+            echo
             echo "This release also ships \`1panel-app-${TAG}.tar.gz\`, a local app package for"
             echo "[1Panel](https://1panel.cn/):"
             echo

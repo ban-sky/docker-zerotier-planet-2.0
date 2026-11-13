@@ -39,9 +39,15 @@
 
 ## 自动更新（计划任务）
 
-把项目里的 `scripts/1panel-scheduled-update.sh` 挂到 **计划任务 → Shell 脚本**，即可按周期
-跟进新版本。脚本参考 [okxlin/appstore](https://github.com/okxlin/appstore) 的做法，把应用包
-同步进 `/opt/1panel/resource/apps/local/`，面板刷新后就能看到新版本：
+一行命令即可把最新版本同步进本地商店，**复制直接执行**，或贴进
+**计划任务 → Shell 脚本** 定时跑：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --quiet
+```
+
+脚本参考 [okxlin/appstore](https://github.com/okxlin/appstore) 的做法，把应用包
+同步进 `/opt/1panel/resource/apps/local/`，面板刷新后就能看到新版本；要手动执行时：
 
 ```bash
 # 下载后执行一次（脚本也随 Release 附件发布）

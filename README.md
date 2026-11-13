@@ -7,7 +7,7 @@
 > **2.4.3 起默认使用 Docker Hub 镜像**
 > 项目名是 `zerotier-planet-2.0`（2.4.2 起由 `docker-zerotier-planet-2.0` 更名而来）；镜像同时发布到
 > `docker.io/lonelyx/zerotier-planet`（**默认**）与 `ghcr.io/ban-sky/zerotier-planet`（备选），
-> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.4.3`）。旧仓库地址与旧镜像名继续可用。
+> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.4.4`）。旧仓库地址与旧镜像名继续可用。
 
 > **许可证提醒（重要）**
 > ZeroTier 1.16 起把 controller 移到了 `nonfree/`，采用 *ZeroTier SOURCE-AVAILABLE
@@ -16,8 +16,34 @@
 > 场景**不得**使用本镜像中的 controller。详见 [NOTICE](NOTICE) 与
 > `/usr/share/licenses/zerotier/`。
 
+## 一键更新 1Panel 应用商店包
+
+把最新版本同步进 1Panel 本地商店（社区版只扫描 `/opt/1panel/resource/apps/local/`），
+**复制一行直接执行**即可；也可以原样贴进「计划任务 → Shell 脚本」按周期跑：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --quiet
+```
+
+要固定到某个 Release（脚本随每个 Release 一起发布，内容一致）：
+
+```bash
+curl -fsSL https://github.com/ban-sky/zerotier-planet-2.0/releases/latest/download/1panel-scheduled-update.sh | sudo bash -s -- --quiet
+```
+
+先看看会做什么（不改任何文件）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --dry-run
+```
+
+脚本会自动挑最新 Release、校验 `SHA256SUMS`、备份旧包（保留最近 5 个）再替换，
+最后重启已安装的实例；`--no-restart` 只更新包。国内网络可加 `--mirror https://ghproxy.net/`。
+全部参数见 [计划任务](#计划任务自动跟进最新版本)，或在脚本后面加 `--help`。
+
 ## 目录
 
+- [一键更新 1Panel 应用商店包](#一键更新-1panel-应用商店包)
 - [界面预览](#界面预览)
 - [相比上游的改动](#相比上游的改动)
 - [快速开始](#快速开始)：[脚本](#方式一脚本) · [Compose](#方式二compose) · [1Panel 应用商店](#方式三1panel-应用商店)
@@ -95,10 +121,10 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。截图取�
 - **1Panel 计划任务脚本**：`scripts/1panel-scheduled-update.sh` 可挂到面板计划任务，
   按周期更新应用商店包并重启已安装实例。
 
-### 部署集成（2.4.3）
+### 部署集成（2.4.4）
 
 - 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
-  可视化启停与升级；镜像 tag 固定版本号（如 `2.4.3`，不带 `v`），方便面板比对版本。
+  可视化启停与升级；镜像 tag 固定版本号（如 `2.4.4`，不带 `v`），方便面板比对版本。
 - 应用包、`docker save` 归档与计划任务脚本一起发布在 Release，`SHA256SUMS` 覆盖全部附件。
 
 ## 快速开始
@@ -132,7 +158,7 @@ cd zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) 里的
 > `zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.4.3`。
+> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.4.4`。
 
 ### 方式二：Compose
 
@@ -161,7 +187,7 @@ sudo ./scripts/install-1panel-app.sh
 不想 clone 也可以用 Release 附件：
 
 ```bash
-sudo tar -xzf 1panel-app-2.4.3.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.4.4.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
@@ -187,7 +213,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 
 > 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
 > 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
-> 应用包里的镜像 tag 固定为 `2.4.3`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
+> 应用包里的镜像 tag 固定为 `2.4.4`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
 
 #### 计划任务：自动跟进最新版本
 
@@ -216,7 +242,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # 只更新应用包，不动运行中的容器；或固定到某个版本
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.3
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.4
 ```
 
 在面板里配置：**计划任务 → 创建计划任务 → 任务类型 `Shell 脚本`**，执行周期按需
@@ -468,8 +494,8 @@ node tests/origin.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.4.3 -m "zerotier-planet-2.0"
-git push origin v2.4.3
+git tag -a v2.4.4 -m "zerotier-planet-2.0"
+git push origin v2.4.4
 ```
 
 推送标签后，Actions 会依次执行：
@@ -487,23 +513,23 @@ git push origin v2.4.3
 Release 附件：
 
 ```text
-zerotier-planet-2.0-2.4.3-amd64.tar.gz    # docker save 归档（gzip）
-zerotier-planet-2.0-2.4.3-arm64.tar.gz    # 仅当勾选 include_arm64
-1panel-app-2.4.3.tar.gz                          # 1Panel 本地应用包
+zerotier-planet-2.0-2.4.4-amd64.tar.gz    # docker save 归档（gzip）
+zerotier-planet-2.0-2.4.4-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-2.4.4.tar.gz                          # 1Panel 本地应用包
 1panel-scheduled-update.sh                          # 计划任务：自动更新应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-2.4.3.txt                            # 加载与运行说明
+LOAD-amd64-2.4.4.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < zerotier-planet-2.0-2.4.3-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.4.4-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.4.3`，可以直接用
+归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.4.4`，可以直接用
 `docker-compose.yml` 里的 `image:` 字段引用（换一台机器时也可以 `docker tag` 成同一个名字）。
 
 ### 镜像地址
@@ -518,23 +544,23 @@ manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull
 
 ```bash
 # 默认：Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.4.3
+docker pull docker.io/lonelyx/zerotier-planet:2.4.4
 
 # 备选：GHCR（拉不动 Docker Hub 时用）
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.3
+docker pull ghcr.io/ban-sky/zerotier-planet:2.4.4
 ```
 
-tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.4.3`），镜像 tag 不带 `v`（`2.4.3`）。**
+tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.4.4`），镜像 tag 不带 `v`（`2.4.4`）。**
 
 
 
 | tag | 内容 | 何时更新 |
 | --- | --- | --- |
-| `2.4.3` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `2.4.4` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
 | `latest` | 最近一次发布 | 同上 |
 | `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
 
-当前 `2.4.3` 的 manifest（两边一致）：
+当前 `2.4.4` 的 manifest（两边一致）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -560,13 +586,13 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 
 ```bash
 # 默认：Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.4.3
+docker pull docker.io/lonelyx/zerotier-planet:2.4.4
 
-sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.4.3 \
+sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.4.4 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # 备选：GHCR
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.3 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.4 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -575,7 +601,7 @@ sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.3 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.4.3 \
+  --image docker.io/lonelyx/zerotier-planet:2.4.4 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 
