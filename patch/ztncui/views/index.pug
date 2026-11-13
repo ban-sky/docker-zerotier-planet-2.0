@@ -19,25 +19,20 @@ block content
       .stat
         span.stat-label= t('overview.addressLabel')
         strong.mono= zt_status.address
-        span.stat-hint= t('overview.addressHint')
       .stat
         span.stat-label= t('overview.versionLabel')
         strong= zt_status.version
-        span.stat-hint= t('overview.versionHint')
 
     .card-grid
       a.card.action-card(href='/controller/networks')
         span.card-kicker= t('overview.networksKicker')
         strong= t('overview.networksTitle')
-        span.card-text= t('overview.networksText')
         span.card-arrow →
       a.card.action-card(href='/users')
         span.card-kicker= t('overview.accessKicker')
         strong= t('overview.accessTitle')
-        span.card-text= t('overview.accessText')
         span.card-arrow →
       a.card.action-card(href='/users')
         span.card-kicker= t('overview.securityKicker')
         strong= t('overview.securityTitle')
-        span.card-text= t('overview.securityText')
         span.card-arrow →

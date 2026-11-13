@@ -66,31 +66,21 @@ const messages = {
     'overview.eyebrow': '控制器',
     'overview.title': '概览',
     'overview.addressLabel': '控制器地址',
-    'overview.addressHint': '这是客户端连接时所使用的身份地址。',
     'overview.versionLabel': 'ZeroTier 版本',
-    'overview.versionHint': 'planet 与控制器运行在此容器中。',
     'overview.networksKicker': '网络',
     'overview.networksTitle': '管理网络',
-    'overview.networksText': '查看成员、路由、DNS 与分配池。',
     'overview.accessKicker': '访问权限',
     'overview.accessTitle': '管理员用户',
-    'overview.accessText': '邀请运维人员并定期更换密码。',
     'overview.securityKicker': '安全',
     'overview.securityTitle': '修改密码',
-    'overview.securityText': '密码使用 Argon2id 进行哈希存储。',
 
     // Sign-in and the public landing page.
-    'login.eyebrow': '管理员登录',
     'login.title': '登录',
-    'login.subtitle': '请使用容器内 /app/config/admin-password 文件中的一次性管理员密码。首次登录后必须设置新密码。',
+    'login.subtitle': '使用 /app/config/admin-password 中的初始密码登录。',
     'login.backToPlanet': '返回 planet 概览',
-    'frontDoor.eyebrow': '自托管',
-    'frontDoor.title': '属于你自己的 ZeroTier planet。',
-    'frontDoor.subtitle': '私有根服务器与网络控制器，运行在同一个容器中，无需第三方控制平面。',
+    'frontDoor.title': 'ZeroTier Planet',
+    'frontDoor.subtitle': '自托管根服务器与网络控制器，一个容器即可运行。',
     'frontDoor.getClient': '下载客户端',
-    'frontDoor.point1': 'planet、moon 与控制器集中在一处',
-    'frontDoor.point2': 'TLS、Argon2id 密码哈希与基于请求头的 planet 下载',
-    'frontDoor.point3': 'ZeroTier 1.16.2 搭配加固的管理界面',
 
     // Error pages.
     'error.eyebrow': '错误',
@@ -167,12 +157,12 @@ const messages = {
 
     // Easy setup.
     'easy.title': '快速配置',
-    'easy.subtitle': '一步配置私有 IPv4 网段、分配池和托管路由，仅支持 IPv4。',
+    'easy.subtitle': '配置私有网段、分配池与托管路由（仅 IPv4）。',
     'easy.cidrHint': '点击“生成”时会随机选用一个 RFC1918 /24 网段。',
 
     // Access control page.
     'private.title': '访问控制',
-    'private.subtitle': '启用后，只有经过你授权的成员才能在此网络上通信。',
+    'private.subtitle': '只有被授权的成员才能通信。',
     'private.privateLabel': '私有网络',
     'private.publicLabel': '公开网络',
     'private.privateHint': '关闭后，所有成员无需授权即可互相通信。',
@@ -198,7 +188,7 @@ const messages = {
     'status.offline': '离线',
     'confirm.removeMember': '确定要将此成员从网络中移除吗？',
     'networkDetail.properties': '网络属性',
-    'networkDetail.propertiesHint': '点击可编辑的属性即可打开对应的设置页面。',
+    'networkDetail.propertiesHint': '点击属性即可编辑。',
 
     // Managed routes.
     'routes.empty': '还没有托管路由。',
@@ -218,13 +208,13 @@ const messages = {
     'confirm.removeIpAssignment': '确定要移除此 IP 分配吗？',
 
     // DNS.
-    'dns.subtitle': '可选的分离 DNS 设置，会下发给已授权成员。',
+    'dns.subtitle': '下发给已授权成员的分域 DNS。',
     'dns.empty': '此网络没有 DNS 配置。',
     'dns.serversPlaceholder': '每行一个 IP 地址',
     'dns.hint': '支持 IPv4 与 IPv6 地址；无效行会被忽略。',
 
     // Password page.
-    'password.subtitle': '至少 10 个字符。Argon2id 哈希以 0600 权限保存。',
+    'password.subtitle': '至少 10 个字符。',
     'password.requireChange': '下次登录时要求修改密码',
     'password.requireChangeHint': '为他人创建账号时很有用。',
 
@@ -252,11 +242,11 @@ const messages = {
 
     // IPv4 / IPv6 assignment modes.
     'v4.title': 'IPv4 分配',
-    'v4.subtitle': '从已配置的分配池自动分配 IPv4 地址。',
+    'v4.subtitle': '从分配池自动分配 IPv4 地址。',
     'v4.autoAssign': '从 IP 分配池自动分配',
     'v4.autoAssignHint': '由控制器管理；成员加入时会获得地址。',
     'v6.title': 'IPv6 分配',
-    'v6.subtitle': '选择为成员生成 IPv6 地址的方式。',
+    'v6.subtitle': '选择 IPv6 地址的分配方式。',
     'v6.sixPlane': 'ZT 6PLANE',
     'v6.sixPlaneHint': '为每台设备分配 /80 可路由前缀。',
     'v6.rfc4193': 'RFC 4193',
@@ -385,31 +375,21 @@ const messages = {
     'overview.eyebrow': 'Controller',
     'overview.title': 'Overview',
     'overview.addressLabel': 'Controller address',
-    'overview.addressHint': 'This is the identity clients connect to.',
     'overview.versionLabel': 'ZeroTier version',
-    'overview.versionHint': 'Planet and controller run in this container.',
     'overview.networksKicker': 'Networks',
     'overview.networksTitle': 'Manage networks',
-    'overview.networksText': 'Review members, routes, DNS and assignment pools.',
     'overview.accessKicker': 'Access',
     'overview.accessTitle': 'Admin users',
-    'overview.accessText': 'Invite operators and rotate passwords.',
     'overview.securityKicker': 'Security',
     'overview.securityTitle': 'Change your password',
-    'overview.securityText': 'Passwords are hashed with Argon2id.',
 
     // Sign-in and the public landing page.
-    'login.eyebrow': 'Admin access',
     'login.title': 'Sign in',
-    'login.subtitle': 'Use the one-time admin password from /app/config/admin-password inside the container. You must set a new password after the first sign-in.',
+    'login.subtitle': 'Sign in with the password in /app/config/admin-password.',
     'login.backToPlanet': 'Back to the planet overview',
-    'frontDoor.eyebrow': 'Self-hosted',
-    'frontDoor.title': 'Your own ZeroTier planet.',
-    'frontDoor.subtitle': 'A private root server and network controller, running in one container. No third-party control plane.',
+    'frontDoor.title': 'ZeroTier Planet',
+    'frontDoor.subtitle': 'Self-hosted root server and network controller in one container.',
     'frontDoor.getClient': 'Get a client',
-    'frontDoor.point1': 'Planet, moon and controller in one place',
-    'frontDoor.point2': 'TLS, Argon2id password hashing and header-based planet downloads',
-    'frontDoor.point3': 'ZeroTier 1.16.2 with a hardened admin UI',
 
     // Error pages.
     'error.eyebrow': 'Error',
@@ -486,12 +466,12 @@ const messages = {
 
     // Easy setup.
     'easy.title': 'Easy setup',
-    'easy.subtitle': 'Configure a private IPv4 range, an assignment pool and the managed route in one step. IPv4 only.',
+    'easy.subtitle': 'Set the private range, pool and managed route (IPv4 only).',
     'easy.cidrHint': 'A random RFC1918 /24 is used when you press Generate.',
 
     // Access control page.
     'private.title': 'Access control',
-    'private.subtitle': 'When enabled, only members you authorise can communicate on this network.',
+    'private.subtitle': 'Only authorised members can communicate.',
     'private.privateLabel': 'Private network',
     'private.publicLabel': 'Public network',
     'private.privateHint': 'Disabling this lets every member talk to every other member without authorisation.',
@@ -517,7 +497,7 @@ const messages = {
     'status.offline': 'Offline',
     'confirm.removeMember': 'Remove this member from the network?',
     'networkDetail.properties': 'Network properties',
-    'networkDetail.propertiesHint': 'Click an editable property to open its settings page.',
+    'networkDetail.propertiesHint': 'Click a property to edit it.',
 
     // Managed routes.
     'routes.empty': 'No managed routes yet.',
@@ -537,13 +517,13 @@ const messages = {
     'confirm.removeIpAssignment': 'Remove this IP assignment?',
 
     // DNS.
-    'dns.subtitle': 'Optional split-DNS settings pushed to authorised members.',
+    'dns.subtitle': 'Split DNS pushed to authorised members.',
     'dns.empty': 'No DNS configuration on this network.',
     'dns.serversPlaceholder': 'One IP address per line',
     'dns.hint': 'IPv4 and IPv6 addresses are accepted; invalid lines are ignored.',
 
     // Password page.
-    'password.subtitle': 'At least 10 characters. Argon2id hashes are stored with mode 0600.',
+    'password.subtitle': 'At least 10 characters.',
     'password.requireChange': 'Require password change on next login',
     'password.requireChangeHint': 'Useful when creating an account for someone else.',
 
@@ -571,11 +551,11 @@ const messages = {
 
     // IPv4 / IPv6 assignment modes.
     'v4.title': 'IPv4 assignment',
-    'v4.subtitle': 'Automatically assign IPv4 addresses from the configured assignment pools.',
+    'v4.subtitle': 'Assign IPv4 addresses from the pools.',
     'v4.autoAssign': 'Auto-assign from IP assignment pools',
     'v4.autoAssignHint': 'Managed by the controller; members receive an address on join.',
     'v6.title': 'IPv6 assignment',
-    'v6.subtitle': 'Choose how IPv6 addresses are derived for members.',
+    'v6.subtitle': 'Choose how IPv6 addresses are assigned.',
     'v6.sixPlane': 'ZT 6PLANE',
     'v6.sixPlaneHint': '/80 routable prefix for each device.',
     'v6.rfc4193': 'RFC 4193',

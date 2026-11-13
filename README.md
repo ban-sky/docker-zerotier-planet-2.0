@@ -23,7 +23,8 @@
 ## 界面预览
 
 管理界面（ztncui 0.9.0）重做为响应式卡片布局：移除了 Bootstrap 3 与 jQuery，
-CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。
+CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。截图取自 2.3.x 构建，
+2.4.0 在此基础上去掉了页面上的多余说明文字，结构不变。
 
 | 控制器概览 | 网络列表 |
 | --- | --- |
@@ -92,7 +93,7 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。
 ### 部署集成（2.2.0）
 
 - 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
-  可视化启停与升级；镜像 tag 固定版本号（如 `v2.3.1`），方便面板比对版本。
+  可视化启停与升级；镜像 tag 固定版本号（如 `v2.4.0`），方便面板比对版本。
 - 应用包、`docker save` 归档与计划任务脚本一起发布在 Release，`SHA256SUMS` 覆盖全部附件。
 
 ## 快速开始
@@ -126,7 +127,7 @@ cd docker-zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) 里的
 > `docker-zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.1`。
+> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.4.0`。
 
 ### 方式二：Compose
 
@@ -155,7 +156,7 @@ sudo ./scripts/install-1panel-app.sh
 不想 clone 也可以用 Release 附件：
 
 ```bash
-sudo tar -xzf 1panel-app-v2.3.1.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-v2.4.0.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
@@ -181,7 +182,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 
 > 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
 > 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
-> 应用包里的镜像 tag 固定为 `v2.3.1`（不用 `latest`），这样面板才能正确识别版本更新。
+> 应用包里的镜像 tag 固定为 `v2.4.0`（不用 `latest`），这样面板才能正确识别版本更新。
 
 #### 计划任务：自动跟进最新版本
 
@@ -210,7 +211,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # 只更新应用包，不动运行中的容器；或固定到某个版本
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.3.1
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.0
 ```
 
 在面板里配置：**计划任务 → 创建计划任务 → 任务类型 `Shell 脚本`**，执行周期按需
@@ -462,8 +463,8 @@ node tests/origin.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.3.1 -m "docker-zerotier-planet 2.0"
-git push origin v2.3.1
+git tag -a v2.4.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.4.0
 ```
 
 推送标签后，Actions 会依次执行：
@@ -481,23 +482,23 @@ git push origin v2.3.1
 Release 附件：
 
 ```text
-docker-zerotier-planet-2.0-v2.3.1-amd64.tar.gz    # docker save 归档（gzip）
-docker-zerotier-planet-2.0-v2.3.1-arm64.tar.gz    # 仅当勾选 include_arm64
-1panel-app-v2.3.1.tar.gz                          # 1Panel 本地应用包
+docker-zerotier-planet-2.0-v2.4.0-amd64.tar.gz    # docker save 归档（gzip）
+docker-zerotier-planet-2.0-v2.4.0-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-v2.4.0.tar.gz                          # 1Panel 本地应用包
 1panel-scheduled-update.sh                          # 计划任务：自动更新应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-v2.3.1.txt                            # 加载与运行说明
+LOAD-amd64-v2.4.0.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < docker-zerotier-planet-2.0-v2.3.1-amd64.tar.gz
+docker load < docker-zerotier-planet-2.0-v2.4.0-amd64.tar.gz
 docker images | grep docker-zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.1`，可以直接用
+归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.4.0`，可以直接用
 `docker-compose.yml` 里的 `image:` 字段引用。
 
 ### 镜像地址
@@ -512,21 +513,21 @@ manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.1
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.4.0
 
 # Docker Hub
-docker pull lonelyx/docker-zerotier-planet-2.0:v2.3.1
+docker pull lonelyx/docker-zerotier-planet-2.0:v2.4.0
 ```
 
 tag 含义（两个 registry 相同）：
 
 | tag | 内容 | 何时更新 |
 | --- | --- | --- |
-| `v2.3.1` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `v2.4.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
 | `latest` | 最近一次发布 | 同上 |
 | `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
 
-当前 `v2.3.1` 的 manifest（两边一致）：
+当前 `v2.4.0` 的 manifest（两边一致）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -552,13 +553,13 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.1
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.4.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.1 \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.4.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub（镜像源更快时可选）
-sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.3.1 \
+sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.4.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -567,7 +568,7 @@ sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.3.1 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.1 \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.4.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 
