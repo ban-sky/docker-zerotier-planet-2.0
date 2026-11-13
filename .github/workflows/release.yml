@@ -209,6 +209,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Exercise the 1Panel cron helper
+        run: |
+          set -euo pipefail
+          bash -n scripts/1panel-scheduled-update.sh
+          # --dry-run must not touch anything.
+          sudo bash scripts/1panel-scheduled-update.sh \
+            --panel-dir /tmp/panel-smoke --source branch --dry-run --quiet
+          # A real sync from the branch, without restarting containers.
+          sudo bash scripts/1panel-scheduled-update.sh \
+            --panel-dir /tmp/panel-smoke --source branch --no-restart --quiet
+          test -f /tmp/panel-smoke/resource/apps/local/zerotier-planet/data.yml
+          ls -1 /tmp/panel-smoke/resource/apps/local/zerotier-planet
+          # A second run must be a no-op.
+          sudo bash scripts/1panel-scheduled-update.sh \
+            --panel-dir /tmp/panel-smoke --source branch --no-restart 2>&1 | grep -q '无需更新'
+
       - name: Download the amd64 archive
         uses: actions/download-artifact@v4
         with:

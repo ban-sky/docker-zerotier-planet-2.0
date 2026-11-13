@@ -2,6 +2,32 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.3.0] - 2026-11-13
+
+### 新增
+
+- **计划任务脚本支持两种取源**，参考 [okxlin/appstore](https://github.com/okxlin/appstore)
+  的 `localApps` 分发方式：
+  - `--source release`（默认）：从最新 Release 下载 `1panel-app-<tag>.tar.gz` 并用
+    `SHA256SUMS` 校验，版本确定、可复现；
+  - `--source branch`：下载分支 tarball（默认 `main`），取其中的
+    `1panel/apps/zerotier-planet` 同步到 `/opt/1panel/resource/apps/local/`，始终跟仓库最新。
+- 新增 `--branch <name>`、`--mirror <prefix>`（等价环境变量 `GITHUB_MIRROR`，适用于
+  ghproxy 等国内镜像）、`--keep-downloads`；`--dry-run` 在两种模式下都会报告将要做什么。
+- 无需 clone 仓库的一行式 cron 命令：
+  `curl -fsSL .../scripts/1panel-scheduled-update.sh -o /tmp/ztp-1panel-update.sh && bash /tmp/ztp-1panel-update.sh --quiet`。
+- 新增 1Panel 应用商店版本目录 `1panel/apps/zerotier-planet/2.3.0/`（镜像 tag `v2.3.0`）。
+
+### 文档
+
+- README（中/英）重写「计划任务」章节：两种取源对比表、镜像前缀用法、一行式命令、
+  备份与回滚说明；1Panel 应用说明同步更新。
+
+### 镜像
+
+- `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0`（发布时同时打 `latest`）
+- `docker.io/lonelyx/docker-zerotier-planet-2.0:v2.3.0`（发布时同时打 `latest`）
+
 ## [2.2.0] - 2026-11-12
 
 ### 修复

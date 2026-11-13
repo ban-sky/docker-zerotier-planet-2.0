@@ -92,7 +92,7 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。
 ### 部署集成（2.2.0）
 
 - 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
-  可视化启停与升级；镜像 tag 固定版本号（如 `v2.2.0`），方便面板比对版本。
+  可视化启停与升级；镜像 tag 固定版本号（如 `v2.3.0`），方便面板比对版本。
 - 应用包、`docker save` 归档与计划任务脚本一起发布在 Release，`SHA256SUMS` 覆盖全部附件。
 
 ## 快速开始
@@ -126,7 +126,7 @@ cd docker-zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/docker-zerotier-planet-2.0/releases) 里的
 > `docker-zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0`。
+> 也可以直接 `docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0`。
 
 ### 方式二：Compose
 
@@ -155,7 +155,7 @@ sudo ./scripts/install-1panel-app.sh
 不想 clone 也可以用 Release 附件：
 
 ```bash
-sudo tar -xzf 1panel-app-v2.2.0.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-v2.3.0.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
@@ -181,25 +181,36 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 
 > 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
 > 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
-> 应用包里的镜像 tag 固定为 `v2.2.0`（不用 `latest`），这样面板才能正确识别版本更新。
+> 应用包里的镜像 tag 固定为 `v2.3.0`（不用 `latest`），这样面板才能正确识别版本更新。
 
 #### 计划任务：自动跟进最新版本
 
-`scripts/1panel-scheduled-update.sh` 可以挂到 1Panel 的 **计划任务 → Shell 脚本**，
-按周期自动把应用包（以及已安装的容器）更新到最新 Release：
+`scripts/1panel-scheduled-update.sh` 参考 [okxlin/appstore](https://github.com/okxlin/appstore)
+的分发方式，把应用包同步进 `/opt/1panel/resource/apps/local/`，面板刷新后就能看到新版本。
+两种取源可选：
+
+| `--source` | 从哪里取包 | 说明 |
+| --- | --- | --- |
+| `release`（默认） | Release 附件 `1panel-app-<tag>.tar.gz` | 用 `SHA256SUMS` 校验，版本确定、可复现 |
+| `branch` | 仓库分支 tarball 里的 `1panel/apps/zerotier-planet` | 与 okxlin 的 `localApps` 分支同一思路，始终跟仓库最新 |
 
 ```bash
-# 手动跑一次看看会做什么
+# 先看会做什么（两种取源都支持 --dry-run）
 sudo ./scripts/1panel-scheduled-update.sh --dry-run
+sudo ./scripts/1panel-scheduled-update.sh --source branch --dry-run
 
-# 更新应用商店包 + 已安装实例（默认行为）
+# 默认：从最新 Release 更新应用包，并重启已安装实例
 sudo ./scripts/1panel-scheduled-update.sh
 
-# 只更新应用包，不动运行中的容器
-sudo ./scripts/1panel-scheduled-update.sh --no-restart
+# okxlin 风格：直接跟 main 分支
+sudo ./scripts/1panel-scheduled-update.sh --source branch --branch main
 
-# 固定到某个版本
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.2.0
+# 国内网络：给 GitHub 地址加镜像前缀
+sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghproxy.net/
+
+# 只更新应用包，不动运行中的容器；或固定到某个版本
+sudo ./scripts/1panel-scheduled-update.sh --no-restart
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.3.0
 ```
 
 在面板里配置：**计划任务 → 创建计划任务 → 任务类型 `Shell 脚本`**，执行周期按需
@@ -209,12 +220,18 @@ sudo ./scripts/1panel-scheduled-update.sh --tag v2.2.0
 /path/to/docker-zerotier-planet-2.0/scripts/1panel-scheduled-update.sh --quiet
 ```
 
-脚本做的事：查 GitHub 最新 tag → 与本地 `.../apps/local/zerotier-planet/<版本>` 比较 →
-下载 `1panel-app-<tag>.tar.gz` 并校验 `SHA256SUMS` → 备份旧包后替换（保留最近 5 个备份）→
-把已安装实例的 compose 镜像 tag 指向新版本并 `docker compose pull && up -d`（失败会退出
-非 0，面板能在任务日志里看到）。`--quiet` 适合 cron，只输出告警和错误；设置
-`GITHUB_TOKEN` 环境变量可提高 GitHub API 限额。脚本也随每个 Release 作为附件发布，没
-clone 仓库时可以直接下载到宿主机再挂计划任务。
+没 clone 仓库也能挂，一行搞定（脚本自己下载）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/docker-zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh -o /tmp/ztp-1panel-update.sh && bash /tmp/ztp-1panel-update.sh --quiet
+```
+
+脚本做的事：确定版本（Release tag，或分支里最新的版本目录）→ 与本地
+`.../apps/local/zerotier-planet/<版本>` 比较 → 取包（Release 走 `SHA256SUMS` 校验，分支
+走 tarball）→ 备份旧包后替换（保留最近 5 个备份）→ 把已安装实例的 compose 镜像 tag 指向
+新版本并 `docker compose pull && up -d`（失败退出非 0，面板能在任务日志里看到）。
+`--quiet` 适合 cron，只输出告警和错误；`GITHUB_TOKEN` 可提高 GitHub API 限额，
+`GITHUB_MIRROR` 环境变量等价于 `--mirror`。脚本本身也随每个 Release 作为附件发布。
 
 ### 界面语言
 
@@ -445,8 +462,8 @@ node tests/origin.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.2.0 -m "docker-zerotier-planet 2.0"
-git push origin v2.2.0
+git tag -a v2.3.0 -m "docker-zerotier-planet 2.0"
+git push origin v2.3.0
 ```
 
 推送标签后，Actions 会依次执行：
@@ -464,23 +481,23 @@ git push origin v2.2.0
 Release 附件：
 
 ```text
-docker-zerotier-planet-2.0-v2.2.0-amd64.tar.gz    # docker save 归档（gzip）
-docker-zerotier-planet-2.0-v2.2.0-arm64.tar.gz    # 仅当勾选 include_arm64
-1panel-app-v2.2.0.tar.gz                          # 1Panel 本地应用包
+docker-zerotier-planet-2.0-v2.3.0-amd64.tar.gz    # docker save 归档（gzip）
+docker-zerotier-planet-2.0-v2.3.0-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-v2.3.0.tar.gz                          # 1Panel 本地应用包
 1panel-scheduled-update.sh                          # 计划任务：自动更新应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-v2.2.0.txt                            # 加载与运行说明
+LOAD-amd64-v2.3.0.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < docker-zerotier-planet-2.0-v2.2.0-amd64.tar.gz
+docker load < docker-zerotier-planet-2.0-v2.3.0-amd64.tar.gz
 docker images | grep docker-zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0`，可以直接用
+归档里保存的 tag 是 `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0`，可以直接用
 `docker-compose.yml` 里的 `image:` 字段引用。
 
 ### 镜像地址
@@ -495,21 +512,21 @@ manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0
 
 # Docker Hub
-docker pull lonelyx/docker-zerotier-planet-2.0:v2.2.0
+docker pull lonelyx/docker-zerotier-planet-2.0:v2.3.0
 ```
 
 tag 含义（两个 registry 相同）：
 
 | tag | 内容 | 何时更新 |
 | --- | --- | --- |
-| `v2.2.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `v2.3.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
 | `latest` | 最近一次发布 | 同上 |
 | `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
 
-当前 `v2.2.0` 的 manifest（两边一致）：
+当前 `v2.3.0` 的 manifest（两边一致）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -535,13 +552,13 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0
+docker pull ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0
 
-sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0 \
+sudo IMAGE=ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub（镜像源更快时可选）
-sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.2.0 \
+sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.3.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -550,7 +567,7 @@ sudo IMAGE=lonelyx/docker-zerotier-planet-2.0:v2.2.0 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.2.0 \
+  --image ghcr.io/ban-sky/docker-zerotier-planet-2.0:v2.3.0 \
   --target-data /opt/docker-zerotier-planet/data/zerotier
 ```
 

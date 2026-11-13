@@ -23,12 +23,16 @@
 ## 自动更新（计划任务）
 
 把项目里的 `scripts/1panel-scheduled-update.sh` 挂到 **计划任务 → Shell 脚本**，即可按周期
-跟进最新 Release：
+跟进新版本。脚本参考 [okxlin/appstore](https://github.com/okxlin/appstore) 的做法，把应用包
+同步进 `/opt/1panel/resource/apps/local/`，面板刷新后就能看到新版本：
 
 ```bash
 # 下载后执行一次（脚本也随 Release 附件发布）
-sudo ./1panel-scheduled-update.sh --dry-run   # 先看会做什么
-sudo ./1panel-scheduled-update.sh --quiet     # 实际更新，适合 cron
+sudo ./1panel-scheduled-update.sh --dry-run              # 先看会做什么
+sudo ./1panel-scheduled-update.sh --quiet                # 跟最新 Release
+sudo ./1panel-scheduled-update.sh --source branch --quiet # 跟 main 分支
+sudo ./1panel-scheduled-update.sh --source branch \
+  --mirror https://ghproxy.net/ --quiet                  # 国内网络走镜像
 ```
 
 脚本会更新本应用包并重启已安装实例；`--no-restart` 只更新应用包。详细参数见

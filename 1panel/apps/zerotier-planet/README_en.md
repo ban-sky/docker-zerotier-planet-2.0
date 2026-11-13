@@ -23,12 +23,17 @@ Ships ZeroTier One 1.16.2 with TLS and the hardened defaults enabled.
 ## Automatic updates (cron job)
 
 Schedule `scripts/1panel-scheduled-update.sh` from the repository as a 1Panel
-**Cron job → Shell script** entry to follow new releases:
+**Cron job → Shell script** entry. Like [okxlin/appstore](https://github.com/okxlin/appstore),
+it syncs the package into `/opt/1panel/resource/apps/local/` so the panel lists the
+new version:
 
 ```bash
 # the script is also attached to every Release
-sudo ./1panel-scheduled-update.sh --dry-run   # preview
-sudo ./1panel-scheduled-update.sh --quiet     # real update, cron-friendly
+sudo ./1panel-scheduled-update.sh --dry-run               # preview
+sudo ./1panel-scheduled-update.sh --quiet                 # follow the newest Release
+sudo ./1panel-scheduled-update.sh --source branch --quiet # follow the main branch
+sudo ./1panel-scheduled-update.sh --source branch \
+  --mirror https://ghproxy.net/ --quiet                   # behind a GitHub mirror
 ```
 
 It refreshes this app package and restarts the installed instance;
