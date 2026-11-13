@@ -51,14 +51,18 @@ curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/sc
 
 ```bash
 # 下载后执行一次（脚本也随 Release 附件发布）
-sudo ./1panel-scheduled-update.sh --dry-run              # 先看会做什么
-sudo ./1panel-scheduled-update.sh --quiet                # 跟最新 Release
+sudo ./1panel-scheduled-update.sh --dry-run               # 先看会做什么
+sudo ./1panel-scheduled-update.sh --quiet                 # 自动选最快通道
+sudo ./1panel-scheduled-update.sh --source cdn --quiet    # 只走 jsDelivr，国内推荐
 sudo ./1panel-scheduled-update.sh --source branch --quiet # 跟 main 分支
-sudo ./1panel-scheduled-update.sh --source branch \
-  --mirror https://ghproxy.net/ --quiet                  # 国内网络走镜像
+sudo ./1panel-scheduled-update.sh \
+  --mirror https://ghfast.top/ --quiet                    # 用 GitHub 镜像下载
+sudo ./1panel-scheduled-update.sh \
+  --source dir --from-dir /root/zerotier-planet-2.0 --quiet # 完全离线
 ```
 
-脚本会更新本应用包并重启已安装实例；`--no-restart` 只更新应用包。详细参数见
+脚本会更新本应用包并重启已安装实例；`--no-restart` 只更新应用包。国内网络下每个请求
+最多 8 秒就放弃并自动换通道（jsDelivr / 镜像），不会一直卡着重试。详细参数见
 [项目 README](https://github.com/ban-sky/zerotier-planet-2.0#计划任务自动跟进最新版本)。
 
 ## 端口

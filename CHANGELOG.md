@@ -2,6 +2,33 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.4.5] - 2026-11-13
+
+### 修复
+
+- **国内服务器执行 1Panel 更新脚本时「一直重试」**：旧脚本对不可达主机使用
+  `--retry 3 --connect-timeout 15`，且取版本强依赖被屏蔽的 `api.github.com`，请求会一路
+  重试到超时。现在每个请求 `--connect-timeout 8 --max-time 180 --retry 1`，失败立刻换通道。
+- 取最新版本改为三级回退：`releases/latest` 的 302 跳转（可用镜像代理）→ GitHub API
+  （可带 `GITHUB_TOKEN`、可走镜像）→ `data.jsdelivr.com` 元数据。
+
+### 新增
+
+- `--source auto|release|cdn|branch|dir`：`auto`（默认）先试 Release、失败自动改用 jsDelivr；
+  `cdn` 只走 jsDelivr（`cdn.jsdelivr.net` 等四个域名）逐个拼装应用包；`dir` 配
+  `--from-dir` 支持完全离线安装。
+- `--mirror` 可重复，内置 `ghfast.top`、`gh-proxy.com`、`ghproxy.net` 三个镜像；
+  只在直连失败后才使用，正常网络不额外等待。
+- 新增 `1panel/apps/zerotier-planet/2.4.5/`（镜像 `docker.io/lonelyx/zerotier-planet:2.4.5`）。
+
+### 变更
+
+- `build.sh`、`deploy.sh`、`docker-compose.yml`、`scripts/migrate-from-upstream.sh` 的默认镜像
+  版本推进到 `2.4.5`。
+- README（中/英）「一键更新」章节新增「国内服务器 / 访问不了 GitHub 时」小节，给出
+  `--source cdn`、`--mirror`、`--source dir` 三种写法；1Panel 应用文档同步。
+- CI 的 cron 脚本用例改为覆盖 `--source dir`（离线路径）与 `--source branch`（联网路径）。
+
 ## [2.4.4] - 2026-11-13
 
 ### 新增

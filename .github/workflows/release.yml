@@ -222,20 +222,21 @@ jobs:
           bash -n scripts/1panel-scheduled-update.sh
           panel_dir="$(mktemp -d)/panel"
 
-          # --dry-run must report and create nothing.
+          # --dry-run must report and create nothing (offline path).
           bash -x scripts/1panel-scheduled-update.sh \
-            --panel-dir "$panel_dir" --source branch --dry-run --quiet
+            --panel-dir "$panel_dir" --source dir --from-dir . --dry-run --quiet
           test ! -e "$panel_dir"
 
-          # A real sync from the branch, without restarting containers.
+          # A real sync from the git branch, without restarting containers.
           bash scripts/1panel-scheduled-update.sh \
             --panel-dir "$panel_dir" --source branch --no-restart
           test -f "$panel_dir/resource/apps/local/zerotier-planet/data.yml"
           ls -1 "$panel_dir/resource/apps/local/zerotier-planet"
 
-          # A second run must be a no-op.
-          bash scripts/1panel-scheduled-update.sh \
-            --panel-dir "$panel_dir" --source branch --no-restart 2>&1 | grep -q '无需更新'
+          # The offline path sees the already-installed version and does nothing.
+          out="$(bash scripts/1panel-scheduled-update.sh \
+            --panel-dir "$panel_dir" --source dir --from-dir . --no-restart 2>&1)"
+          printf '%s\n' "$out" | grep -q '无需更新'
 
       - name: Download the amd64 archive
         uses: actions/download-artifact@v4
@@ -551,6 +552,13 @@ jobs:
             echo
             echo '```bash'
             echo "sudo tar -xzf 1panel-app-${TAG}.tar.gz -C /opt/1panel/resource/apps/local"
+            echo '```'
+            echo
+            echo "On mainland-China servers (or any network where github.com is blocked) pin the"
+            echo "channel instead — the helper then talks to jsDelivr only:"
+            echo
+            echo '```bash'
+            echo "sudo bash 1panel-scheduled-update.sh --source cdn --quiet"
             echo '```'
             echo
             echo "Then refresh the app list in the panel (App Store → Update app list) and install"

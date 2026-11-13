@@ -11,7 +11,7 @@ upstream project.
 > The project is `zerotier-planet-2.0` (renamed from `docker-zerotier-planet-2.0` in 2.4.2).
 > Images are published to `docker.io/lonelyx/zerotier-planet` (**default**) and
 > `ghcr.io/ban-sky/zerotier-planet` (alternative), with tags that match the version
-> **without a leading `v`** (git tags and Releases still use `v2.4.4`). The old repository
+> **without a leading `v`** (git tags and Releases still use `v2.4.5`). The old repository
 > URL and the old image names keep working.
 
 > **License warning (important)**
@@ -44,10 +44,30 @@ Preview what it would change:
 curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --dry-run
 ```
 
-It picks the newest Release, verifies `SHA256SUMS`, backs up the old package (the last
+It picks the newest version, verifies `SHA256SUMS`, backs up the old package (the last
 five are kept), installs the new one and restarts the running instance;
-`--no-restart` updates the package only. Behind the Great Firewall add
-`--mirror https://ghproxy.net/`. See [cron job](#cron-job-follow-new-releases-automatically)
+`--no-restart` updates the package only.
+
+### Mainland China / when github.com is unreachable
+
+Since 2.4.5 the script no longer needs `api.github.com`: it resolves the version via the
+`releases/latest` redirect, the GitHub API **and** jsDelivr metadata in turn, falls back
+to assembling the package from the jsDelivr CDN, and **gives up after 8 s per request**,
+so it can no longer look like it "keeps retrying". Pinning the channel is faster:
+
+```bash
+# jsDelivr only, github.com is never contacted
+curl -fsSL https://cdn.jsdelivr.net/gh/ban-sky/zerotier-planet-2.0@main/scripts/1panel-scheduled-update.sh -o /tmp/ztp-update.sh
+sudo bash /tmp/ztp-update.sh --source cdn --quiet
+
+# download Release assets through a GitHub mirror (repeatable)
+sudo bash /tmp/ztp-update.sh --mirror https://ghfast.top/ --mirror https://gh-proxy.com/ --quiet
+
+# fully offline: copy the checkout over, then install from it
+sudo bash /tmp/ztp-update.sh --source dir --from-dir /root/zerotier-planet-2.0 --quiet
+```
+
+See [cron job](#cron-job-follow-new-releases-automatically)
 for every flag, or append `--help`.
 
 ## Contents
@@ -135,11 +155,11 @@ collapses into a menu:
 - **1Panel cron helper.** `scripts/1panel-scheduled-update.sh` can be scheduled as a
   1Panel cron job to refresh the app package and restart the installed instance.
 
-### Deployment integrations (2.4.4)
+### Deployment integrations (2.4.5)
 
 - Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
   panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
-  release version (e.g. `2.4.4`, no leading `v`) so the panel can detect updates.
+  release version (e.g. `2.4.5`, no leading `v`) so the panel can detect updates.
 - The app package, the `docker save` archives and the cron helper are published together in
   every Release, with `SHA256SUMS` covering all of them.
 
@@ -177,7 +197,7 @@ directory.
 > `zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `docker.io/lonelyx/zerotier-planet:2.4.4` directly.
+> `docker.io/lonelyx/zerotier-planet:2.4.5` directly.
 
 ### Option 2: Compose
 
@@ -206,7 +226,7 @@ sudo ./scripts/install-1panel-app.sh
 No checkout? Use the Release asset instead:
 
 ```bash
-sudo tar -xzf 1panel-app-2.4.4.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.4.5.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
@@ -234,7 +254,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 > The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
 > the **professional edition** "custom repository" can point at the `1panel/apps`
 > directory of this repository as well. The image tag inside the package is pinned
-> to `2.4.4` (no leading `v`, never `latest`) so the panel can detect version updates.
+> to `2.4.5` (no leading `v`, never `latest`) so the panel can detect version updates.
 
 #### Cron job: follow new releases automatically
 
@@ -264,7 +284,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # package only, or pin a version
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.4
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.4.5
 ```
 
 In the panel: **Cron job → Create → Task type `Shell script`**, run it on whatever
@@ -533,8 +553,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.4.4 -m "zerotier-planet-2.0"
-git push origin v2.4.4
+git tag -a v2.4.5 -m "zerotier-planet-2.0"
+git push origin v2.4.5
 ```
 
 The tag runs four jobs:
@@ -555,24 +575,24 @@ The tag runs four jobs:
 Release assets:
 
 ```text
-zerotier-planet-2.0-2.4.4-amd64.tar.gz    # gzipped docker save archive
-zerotier-planet-2.0-2.4.4-arm64.tar.gz    # only when include_arm64 is set
-1panel-app-2.4.4.tar.gz                          # 1Panel app package
+zerotier-planet-2.0-2.4.5-amd64.tar.gz    # gzipped docker save archive
+zerotier-planet-2.0-2.4.5-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-2.4.5.tar.gz                          # 1Panel app package
 1panel-scheduled-update.sh                          # cron helper: update the app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-2.4.4.txt                            # load and run instructions
+LOAD-amd64-2.4.5.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < zerotier-planet-2.0-2.4.4-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.4.5-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`docker.io/lonelyx/zerotier-planet:2.4.4`, so the `image:` field in
+`docker.io/lonelyx/zerotier-planet:2.4.5`, so the `image:` field in
 `docker-compose.yml` can point straight at it.
 
 ### Image registries
@@ -588,21 +608,21 @@ multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
 
 ```bash
 # default: Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.4.4
+docker pull docker.io/lonelyx/zerotier-planet:2.4.5
 
 # alternative: GHCR (use it if Docker Hub is unreachable)
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.4
+docker pull ghcr.io/ban-sky/zerotier-planet:2.4.5
 ```
 
 Tag semantics (identical on both registries):
 
 | Tag | Contents | Updated when |
 | --- | --- | --- |
-| `2.4.4` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `2.4.5` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
 | `latest` | the most recent release | same |
 | `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
 
-Current `2.4.4` manifest (identical on both registries):
+Current `2.4.5` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -645,13 +665,13 @@ Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.4.4
+docker pull ghcr.io/ban-sky/zerotier-planet:2.4.5
 
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.4 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.4.5 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub (useful when it is the faster registry for you)
-sudo IMAGE=lonelyx/zerotier-planet:2.4.4 \
+sudo IMAGE=lonelyx/zerotier-planet:2.4.5 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -660,7 +680,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.4.4 \
+  --image docker.io/lonelyx/zerotier-planet:2.4.5 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 

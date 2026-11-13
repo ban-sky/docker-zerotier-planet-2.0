@@ -52,15 +52,20 @@ Like [okxlin/appstore](https://github.com/okxlin/appstore), it syncs the package
 
 ```bash
 # the script is also attached to every Release
-sudo ./1panel-scheduled-update.sh --dry-run               # preview
-sudo ./1panel-scheduled-update.sh --quiet                 # follow the newest Release
-sudo ./1panel-scheduled-update.sh --source branch --quiet # follow the main branch
-sudo ./1panel-scheduled-update.sh --source branch \
-  --mirror https://ghproxy.net/ --quiet                   # behind a GitHub mirror
+sudo ./1panel-scheduled-update.sh --dry-run                # preview
+sudo ./1panel-scheduled-update.sh --quiet                  # pick the fastest channel
+sudo ./1panel-scheduled-update.sh --source cdn --quiet     # jsDelivr only (China)
+sudo ./1panel-scheduled-update.sh --source branch --quiet  # follow the main branch
+sudo ./1panel-scheduled-update.sh \
+  --mirror https://ghfast.top/ --quiet                     # behind a GitHub mirror
+sudo ./1panel-scheduled-update.sh \
+  --source dir --from-dir /root/zerotier-planet-2.0 --quiet # fully offline
 ```
 
 It refreshes this app package and restarts the installed instance;
-`--no-restart` updates the package only. See the
+`--no-restart` updates the package only. On networks where GitHub is blocked every
+request gives up after 8 s and the next channel (jsDelivr or a mirror) is tried, so it
+never hangs retrying. See the
 [project README](https://github.com/ban-sky/zerotier-planet-2.0#cron-job-follow-new-releases-automatically)
 for every flag.
 
