@@ -1,0 +1,25 @@
+//-
+  ztncui - ZeroTier network controller UI
+  Copyright (C) 2017-2021  Key Networks (https://key-networks.com)
+  Licensed under GPLv3 - see LICENSE for details.
+
+extends login_layout
+
+block login_content
+  img.auth-logo(src='/images/zt-mark.svg', alt='', width='60', height='60')
+  h1.auth-title= t('passkey.title')
+  p.auth-subtitle= t('passkey.subtitle', { name: name })
+
+  if message
+    .alert.alert-error= message
+
+  if available
+    .alert.alert-error#passkey-error(hidden)
+    button.btn.btn-primary.btn-block#passkey-start(type='button', data-begin='/login/passkey/begin', data-finish='/login/passkey/finish', data-mode='login')= t('passkey.submit')
+    p.auth-footnote
+      a(href='/logout')= t('passkey.cancel')
+  else
+    p.auth-footnote
+      a(href='/logout')= t('passkey.cancel')
+
+  script(src='/js/passkey.js', defer)

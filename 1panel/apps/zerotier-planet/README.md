@@ -14,6 +14,7 @@
 - planet 下载走 `Authorization: Bearer` 鉴权，不再把密钥放在 URL 里。
 - 数据持久化在应用目录的 `data/`（`config`、`dist`、`one`）。
 - **两步验证（TOTP）**：每个管理员可为自己开启，支持备用码。
+- **通行密钥（Passkey / WebAuthn）**：与两步验证二选一，需要域名与受信任证书。
 
 ## 安装
 

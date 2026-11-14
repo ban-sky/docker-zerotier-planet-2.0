@@ -2,6 +2,36 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)，镜像 tag 与 Release 标签一致。
 
+## [2.6.0] - 2026-11-14
+
+### 新增
+
+- **通行密钥（Passkey / WebAuthn）**：除 TOTP 之外的第二种第二因素，浏览器用指纹、面容或
+  系统 PIN 确认身份，服务器只保存公钥。登录时密码通过后跳到 `/login/passkey`。
+- **二选一**：TOTP 与通行密钥互斥。已启用 TOTP 时拒绝添加通行密钥，已添加通行密钥时拒绝
+  启用 TOTP，页面给出明确提示。
+- 新增 `patch/ztncui/webauthn.js`（零依赖：CBOR 解析、COSE 公钥转换、ES256/RS256/RS384/
+  RS512/EdDSA 验签、rpIdHash/UP/UV/challenge/origin/crossOrigin/credentialId/计数器校验）
+  与 `tests/webauthn.test.js`（29 项断言，自带 CBOR 编码器扮演认证器并用真实密钥签名）。
+- 新增 `patch/ztncui/public/js/passkey.js`（CSP 无内联脚本，事件委托绑定）与
+  `views/passkeys.pug`、`views/loginPasskey.pug`；`users.pug` 行操作增加入口。
+- 新增环境变量 `PASSKEY_RP_ID`、`PASSKEY_ORIGIN`、`PASSKEY_RP_NAME`，用于反代场景下固定
+  依赖方 ID 与来源。
+- 新增 `1panel/apps/zerotier-planet/2.6.0/`（镜像 `docker.io/lonelyx/zerotier-planet:2.6.0`）。
+
+### 变更
+
+- `build.sh`、`deploy.sh`、`docker-compose.yml`、`scripts/migrate-from-upstream.sh` 的默认镜像
+  版本推进到 `2.6.0`。
+- README（中/英）新增「通行密钥（Passkey / WebAuthn）」章节与环境变量说明；1Panel 应用文档
+  的功能列表标注通行密钥。
+
+### 说明
+
+- 通行密钥要求**域名 + 受信任证书**（WebAuthn 的硬性限制）：裸 IP 或自签证书下浏览器会
+  拒绝，界面会说明原因并给出 `PASSKEY_RP_ID`/`PASSKEY_ORIGIN` 的配置方式。
+- 挑战存于会话、5 分钟过期、单次使用；每个凭据记录签名计数器，重放的断言会被拒绝。
+
 ## [2.5.0] - 2026-11-13
 
 ### 新增

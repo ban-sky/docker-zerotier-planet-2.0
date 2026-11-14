@@ -14,6 +14,7 @@ Ships ZeroTier One 1.16.2 with TLS and the hardened defaults enabled.
 - The planet download requires an `Authorization: Bearer` key instead of a key in the URL.
 - Data persists in the app directory under `data/` (`config`, `dist`, `one`).
 - **Two-step verification (TOTP)** per admin, with single-use backup codes.
+- **Passkeys (WebAuthn)** as the alternative second factor; needs a hostname and a trusted certificate.
 
 ## Install
 

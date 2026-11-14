@@ -37,6 +37,18 @@ router.post('/:name/totp/disable', restrict, usersController.totp_disable_post);
 // POST request to replace the backup codes
 router.post('/:name/totp/backup', restrict, usersController.totp_backup_post);
 
+// GET request for the passkey page
+router.get('/:name/passkeys', restrict, usersController.passkeys_get);
+
+// POST request that hands the browser the registration options
+router.post('/:name/passkeys/begin', restrict, usersController.passkeys_begin_post);
+
+// POST request that verifies the attestation and stores the credential
+router.post('/:name/passkeys/finish', restrict, usersController.passkeys_finish_post);
+
+// POST request that removes a credential
+router.post('/:name/passkeys/:id/delete', restrict, usersController.passkeys_delete_post);
+
 // GET request for user delete (confirmation page)
 router.get('/:name/delete', restrict, usersController.user_delete_get);
 

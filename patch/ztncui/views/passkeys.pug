@@ -1,0 +1,39 @@
+//-
+  ztncui - ZeroTier network controller UI
+  Copyright (C) 2017-2021  Key Networks (https://key-networks.com)
+  Licensed under GPLv3 - see LICENSE for details.
+
+extends users_layout
+
+block users_content
+  - const base = '/users/' + encodeURIComponent(name) + '/passkeys'
+
+  if message
+    .alert.alert-info= message
+
+  .card.form-card
+    h2= t('passkey.cardTitle')
+
+    if !available
+      .alert.alert-error= unavailableReason
+    else if totpEnabled
+      .alert.alert-error= t('passkey.totpConflict')
+    else
+      p.card-subtitle= t('passkey.setupHint', { rp: rpId })
+
+    if status.records.length
+      ul.meta-list
+        each record in status.records
+          li.meta-line
+            span= record.label || record.id.slice(0, 16)
+            form.inline-form(method='POST', action=base + '/' + encodeURIComponent(record.id) + '/delete')
+              button.btn.btn-sm.btn-ghost(type='submit')= t('passkey.remove')
+    else
+      p.meta-line= t('passkey.none')
+
+    if available && !totpEnabled
+      hr.rule
+      .alert.alert-error#passkey-error(hidden)
+      button.btn.btn-primary#passkey-start(type='button', data-begin=base + '/begin', data-finish=base + '/finish', data-mode='register', data-label=t('passkey.defaultLabel'))= t('passkey.add')
+
+  script(src='/js/passkey.js', defer)

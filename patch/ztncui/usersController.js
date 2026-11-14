@@ -500,6 +500,13 @@ exports.totp_enable_post = async function(req, res) {
     return res.redirect('/users/' + encodeURIComponent(name) + '/totp');
   }
 
+  // Passkeys and TOTP are mutually exclusive; an account carries one.
+  const passkeys = passkeyRecords(loadUser(await get_users(), name));
+  if (passkeys.length) {
+    req.session.error = msg(req, 'msg.passkeyTotpConflict');
+    return res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+  }
+
   const step = totp.verify(challenge.secret, req.body.code);
   if (step === null) {
     return res.status(400).render('totp', {
@@ -585,4 +592,373 @@ exports.totp_backup_post = async function(req, res) {
   req.session.totpBackupCodes = codes || [];
   req.session.success = msg(req, 'msg.totpBackupRegenerated');
   res.redirect('/users/' + encodeURIComponent(name) + '/totp');
+};
+
+// --- passkeys (WebAuthn) ---------------------------------------------------
+//
+// Passkeys are the alternative second factor to TOTP: an account uses one or
+// the other, never both. Credentials are public keys, so they can live in the
+// same 0600 passwd file as the password hash without weakening it.
+
+const crypto = require('crypto');
+const webauthn = require('../webauthn');
+
+const PK_TTL_MS = 5 * 60 * 1000;
+const MAX_PASSKEYS = 10;
+const RP_NAME = process.env.PASSKEY_RP_NAME || 'ZeroTier Planet';
+
+function passkeyRecords(user) {
+  if (!user || !Array.isArray(user.passkeys)) return [];
+  return user.passkeys.filter((record) => record && typeof record.id === 'string');
+}
+
+function isIpLiteral(hostname) {
+  const host = String(hostname || '').replace(/^\[|\]$/g, '');
+  if (!host) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
+  return host.includes(':') && /^[0-9a-f:.]+$/i.test(host);
+}
+
+/**
+ * Work out the relying party for this request.
+ *
+ * WebAuthn is bound to a hostname and to a secure context, so a deployment on a
+ * bare IP address (or plain HTTP) cannot use passkeys. The UI says so instead
+ * of offering a button that the browser will refuse.
+ */
+function relyingParty(req) {
+  const configuredId = (process.env.PASSKEY_RP_ID || '').trim().toLowerCase();
+  const configuredOrigin = (process.env.PASSKEY_ORIGIN || '').trim().replace(/\/+$/, '');
+  const hostname = String(req.hostname || '').toLowerCase();
+  const rpId = configuredId || hostname;
+  const origin = configuredOrigin || String(req.protocol + '://' + req.get('host')).toLowerCase();
+
+  if (!rpId) return { ok: false, reason: 'no-host' };
+  if (isIpLiteral(rpId)) return { ok: false, reason: 'ip' };
+  if (!/^https:\/\//.test(origin) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return { ok: false, reason: 'insecure' };
+  }
+  return { ok: true, rpId, origin, name: RP_NAME };
+}
+
+function userHandle(name) {
+  return webauthn.b64u(Buffer.from(name, 'utf8'));
+}
+
+function challengeBytes() {
+  return crypto.randomBytes(32);
+}
+
+function storedKey(record) {
+  return {
+    alg: record.alg,
+    key: crypto.createPublicKey({
+      key: Buffer.from(record.spki, 'base64'),
+      format: 'der',
+      type: 'spki'
+    })
+  };
+}
+
+exports.passkey_records = passkeyRecords;
+exports.passkey_rp = relyingParty;
+
+exports.passkey_status = async function(name) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  return {
+    enabled: passkeyRecords(user).length > 0,
+    count: passkeyRecords(user).length,
+    records: passkeyRecords(user).map((record) => ({
+      id: record.id,
+      label: record.label || '',
+      created_at: record.createdAt || null
+    }))
+  };
+};
+
+/** Build the creation options and remember the challenge in the session. */
+exports.passkey_begin_registration = async function(req, name) {
+  const rp = relyingParty(req);
+  if (!rp.ok) {
+    const err = new Error(rp.reason);
+    err.code = rp.reason;
+    throw err;
+  }
+
+  const users = await get_users();
+  const user = loadUser(users, name);
+  const existing = passkeyRecords(user);
+  if (existing.length >= MAX_PASSKEYS) {
+    const err = new Error('too-many');
+    err.code = 'too-many';
+    throw err;
+  }
+
+  const challenge = webauthn.b64u(challengeBytes());
+  req.session.pkCeremony = {
+    kind: 'register',
+    name,
+    challenge,
+    rpId: rp.rpId,
+    origin: rp.origin,
+    issued_at: Date.now()
+  };
+
+  return {
+    publicKey: {
+      rp: { id: rp.rpId, name: rp.name },
+      user: { id: userHandle(name), name, displayName: name },
+      challenge,
+      pubKeyCredParams: [
+        { type: 'public-key', alg: -7 },
+        { type: 'public-key', alg: -257 },
+        { type: 'public-key', alg: -8 }
+      ],
+      timeout: 60000,
+      attestation: 'none',
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred'
+      },
+      excludeCredentials: existing.map((record) => ({ type: 'public-key', id: record.id }))
+    }
+  };
+};
+
+/** Verify the attestation and store the credential. */
+exports.passkey_finish_registration = async function(req, name, body) {
+  const ceremony = req.session.pkCeremony;
+  delete req.session.pkCeremony;
+  if (!ceremony || ceremony.kind !== 'register' || ceremony.name !== name) {
+    const err = new Error('ceremony-expired');
+    err.code = 'ceremony-expired';
+    throw err;
+  }
+  if (Date.now() - ceremony.issued_at > PK_TTL_MS) {
+    const err = new Error('ceremony-expired');
+    err.code = 'ceremony-expired';
+    throw err;
+  }
+
+  // The two factors are mutually exclusive; refuse to end up with both.
+  const totpState = await exports.totp_status(name);
+  if (totpState.enabled) {
+    const err = new Error('totp-enabled');
+    err.code = 'totp-enabled';
+    throw err;
+  }
+
+  const verified = webauthn.verifyRegistration(body, {
+    challenge: ceremony.challenge,
+    origin: ceremony.origin,
+    rpId: ceremony.rpId,
+    requireUV: false
+  });
+
+  const users = await get_users();
+  const user = loadUser(users, name);
+  if (!user) {
+    const err = new Error('unknown-user');
+    err.code = 'unknown-user';
+    throw err;
+  }
+
+  const records = passkeyRecords(user).filter((record) => record.id !== verified.credentialId);
+  records.push({
+    id: verified.credentialId,
+    alg: verified.publicKey.alg,
+    spki: verified.publicKey.key.export({ type: 'spki', format: 'der' }).toString('base64'),
+    signCount: verified.signCount,
+    createdAt: new Date().toISOString(),
+    label: typeof (body && body.label) === 'string' ? body.label.slice(0, 40) : ''
+  });
+  user.passkeys = records;
+  await update_users(users);
+
+  return { id: verified.credentialId, count: records.length };
+};
+
+exports.passkey_begin_authentication = async function(req, name) {
+  const rp = relyingParty(req);
+  if (!rp.ok) {
+    const err = new Error(rp.reason);
+    err.code = rp.reason;
+    throw err;
+  }
+
+  const users = await get_users();
+  const records = passkeyRecords(loadUser(users, name));
+  if (!records.length) {
+    const err = new Error('no-passkey');
+    err.code = 'no-passkey';
+    throw err;
+  }
+
+  const challenge = webauthn.b64u(challengeBytes());
+  req.session.pkCeremony = {
+    kind: 'login',
+    name,
+    challenge,
+    rpId: rp.rpId,
+    origin: rp.origin,
+    issued_at: Date.now()
+  };
+
+  return {
+    publicKey: {
+      challenge,
+      rpId: rp.rpId,
+      timeout: 60000,
+      userVerification: 'preferred',
+      allowCredentials: records.map((record) => ({ type: 'public-key', id: record.id }))
+    }
+  };
+};
+
+exports.passkey_finish_authentication = async function(req, name, body) {
+  const ceremony = req.session.pkCeremony;
+  delete req.session.pkCeremony;
+  if (!ceremony || ceremony.kind !== 'login' || ceremony.name !== name) {
+    const err = new Error('ceremony-expired');
+    err.code = 'ceremony-expired';
+    throw err;
+  }
+  if (Date.now() - ceremony.issued_at > PK_TTL_MS) {
+    const err = new Error('ceremony-expired');
+    err.code = 'ceremony-expired';
+    throw err;
+  }
+
+  const users = await get_users();
+  const user = loadUser(users, name);
+  const records = passkeyRecords(user);
+  const credentialId = typeof (body && body.id) === 'string' ? body.id : '';
+  const record = records.find((item) => item.id === credentialId);
+  if (!record) {
+    const err = new Error('unknown-credential');
+    err.code = 'unknown-credential';
+    throw err;
+  }
+
+  const result = webauthn.verifyAuthentication(body, {
+    challenge: ceremony.challenge,
+    origin: ceremony.origin,
+    rpId: ceremony.rpId,
+    requireUV: false
+  }, {
+    publicKey: storedKey(record),
+    signCount: Number(record.signCount) || 0
+  });
+
+  record.signCount = result.signCount;
+  record.lastUsedAt = new Date().toISOString();
+  await update_users(users);
+
+  return { name };
+};
+
+exports.passkey_remove = async function(name, id) {
+  const users = await get_users();
+  const user = loadUser(users, name);
+  if (!user) return 0;
+  const records = passkeyRecords(user);
+  const kept = records.filter((record) => record.id !== id);
+  user.passkeys = kept;
+  await update_users(users);
+  return records.length - kept.length;
+};
+
+// --- passkey pages ---------------------------------------------------------
+
+function passkeyError(req, code) {
+  const map = {
+    ip: 'msg.passkeyNeedsDomain',
+    insecure: 'msg.passkeyNeedsHttps',
+    'no-host': 'msg.passkeyNeedsDomain',
+    'totp-enabled': 'msg.passkeyTotpConflict',
+    'too-many': 'msg.passkeyLimit',
+    'ceremony-expired': 'msg.passkeyExpired',
+    'unknown-credential': 'msg.passkeyInvalid',
+    'no-passkey': 'msg.passkeyInvalid'
+  };
+  return msg(req, map[code] || 'msg.passkeyInvalid');
+}
+
+exports.passkeyError = passkeyError;
+
+exports.passkeys_get = async function(req, res) {
+  const navigate = { active: 'users' };
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  const status = await exports.passkey_status(name);
+  const totpState = await exports.totp_status(name);
+  const rp = relyingParty(req);
+
+  let flash = '';
+  if (req.session.error) {
+    flash = req.session.error;
+    delete req.session.error;
+  } else if (req.session.success) {
+    flash = req.session.success;
+    delete req.session.success;
+  }
+
+  res.render('passkeys', {
+    title: msg(req, 'page.passkeys'),
+    navigate,
+    name,
+    status,
+    totpEnabled: totpState.enabled,
+    available: rp.ok,
+    unavailableReason: rp.ok ? '' : passkeyError(req, rp.reason),
+    rpId: rp.ok ? rp.rpId : '',
+    message: flash
+  });
+};
+
+exports.passkeys_begin_post = async function(req, res) {
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).json({ error: msg(req, 'msg.invalidUsername') });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  try {
+    const options = await exports.passkey_begin_registration(req, name);
+    res.json(options);
+  } catch (err) {
+    res.status(400).json({ error: passkeyError(req, err.code || 'unknown') });
+  }
+};
+
+exports.passkeys_finish_post = async function(req, res) {
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).json({ error: msg(req, 'msg.invalidUsername') });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  try {
+    const result = await exports.passkey_finish_registration(req, name, req.body || {});
+    res.json({ ok: true, id: result.id, count: result.count });
+  } catch (err) {
+    res.status(400).json({ error: passkeyError(req, err.code || 'invalid') });
+  }
+};
+
+exports.passkeys_delete_post = async function(req, res) {
+  const name = req.params.name;
+  if (!validUsername(name)) {
+    return res.status(400).render('error', { message: msg(req, 'msg.invalidUsername'), error: {} });
+  }
+  if (!selfOnly(req, res, name)) return;
+
+  const removed = await exports.passkey_remove(name, String(req.params.id || ''));
+  req.session[removed ? 'success' : 'error'] = msg(req, removed ? 'msg.passkeyRemoved' : 'msg.passkeyInvalid');
+  res.redirect('/users/' + encodeURIComponent(name) + '/passkeys');
 };

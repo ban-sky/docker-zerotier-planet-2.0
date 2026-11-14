@@ -11,7 +11,7 @@ upstream project.
 > The project is `zerotier-planet-2.0` (renamed from `docker-zerotier-planet-2.0` in 2.4.2).
 > Images are published to `docker.io/lonelyx/zerotier-planet` (**default**) and
 > `ghcr.io/ban-sky/zerotier-planet` (alternative), with tags that match the version
-> **without a leading `v`** (git tags and Releases still use `v2.5.0`). The old repository
+> **without a leading `v`** (git tags and Releases still use `v2.6.0`). The old repository
 > URL and the old image names keep working.
 
 > **License warning (important)**
@@ -155,11 +155,11 @@ collapses into a menu:
 - **1Panel cron helper.** `scripts/1panel-scheduled-update.sh` can be scheduled as a
   1Panel cron job to refresh the app package and restart the installed instance.
 
-### Deployment integrations (2.5.0)
+### Deployment integrations (2.6.0)
 
 - Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
   panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
-  release version (e.g. `2.5.0`, no leading `v`) so the panel can detect updates.
+  release version (e.g. `2.6.0`, no leading `v`) so the panel can detect updates.
 - The app package, the `docker save` archives and the cron helper are published together in
   every Release, with `SHA256SUMS` covering all of them.
 
@@ -197,7 +197,7 @@ directory.
 > `zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `docker.io/lonelyx/zerotier-planet:2.5.0` directly.
+> `docker.io/lonelyx/zerotier-planet:2.6.0` directly.
 
 ### Option 2: Compose
 
@@ -226,7 +226,7 @@ sudo ./scripts/install-1panel-app.sh
 No checkout? Use the Release asset instead:
 
 ```bash
-sudo tar -xzf 1panel-app-2.5.0.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.6.0.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
@@ -254,7 +254,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 > The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
 > the **professional edition** "custom repository" can point at the `1panel/apps`
 > directory of this repository as well. The image tag inside the package is pinned
-> to `2.5.0` (no leading `v`, never `latest`) so the panel can detect version updates.
+> to `2.6.0` (no leading `v`, never `latest`) so the panel can detect version updates.
 
 #### Cron job: follow new releases automatically
 
@@ -284,7 +284,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # package only, or pin a version
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.5.0
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.6.0
 ```
 
 In the panel: **Cron job → Create → Task type `Shell script`**, run it on whatever
@@ -337,6 +337,40 @@ The secret and the backup-code hashes sit next to the password hash in the contr
 `ztncui-passwd` (0600, inside `data/config`). Everything is verified server side: no external
 service, no SMS, no extra runtime dependency. `TOTP_ISSUER` (default `ZeroTier Planet`) is the
 name shown in the authenticator.
+
+> TOTP and passkeys are mutually exclusive: enabling one blocks the other. See
+> "Passkeys (WebAuthn)" below to switch.
+
+### Passkeys (WebAuthn)
+
+Passkeys are the alternative second factor to TOTP: the browser asks for a fingerprint,
+face or system PIN, the private key never leaves the user's device, and the server stores
+only the public key. **An account uses one or the other** — once one factor is enabled the
+other is refused.
+
+WebAuthn has hard requirements, all of which must hold:
+
+- the deployment must be reached through a **hostname** (a bare IP cannot work), e.g.
+  `https://zt.example.com`;
+- the connection must be HTTPS with a certificate the browser trusts (self-signed is
+  refused, except on localhost).
+
+When that holds: **Users → Passkeys** (`/users/<name>/passkeys`) → **Add a passkey**, confirm
+the browser prompt, done. A later sign-in asks for the password and then redirects to
+`/login/passkey`, where the browser does the rest.
+
+On an IP address or on HTTPS without a trusted certificate the page explains why instead of
+offering a button that cannot work. When a reverse proxy terminates TLS, pin the relying
+party explicitly:
+
+```bash
+-e PASSKEY_RP_ID=zt.example.com \
+-e PASSKEY_ORIGIN=https://zt.example.com
+```
+
+Challenges live in the session, expire after five minutes and are single use; every
+credential records its signature counter, so replayed assertions are rejected. To switch
+back to TOTP, remove all passkeys first and then enable TOTP (and the other way round).
 
 ### First login
 
@@ -410,6 +444,9 @@ zerotier-cli orbit <moon-id> <moon-id>
 | `HTTPS_HOST` | `0.0.0.0` | Set to `::` to listen on IPv6 as well |
 | `DEFAULT_LOCALE` | `zh-CN` | Default UI language: `zh-CN` or `en` |
 | `TOTP_ISSUER` | `ZeroTier Planet` | Issuer name shown by authenticator apps |
+| `PASSKEY_RP_ID` | request hostname | Relying party ID for passkeys; set it when a proxy rewrites the host |
+| `PASSKEY_ORIGIN` | request origin | Expected origin, e.g. `https://zt.example.com` |
+| `PASSKEY_RP_NAME` | `ZeroTier Planet` | Name shown in the passkey prompt |
 | `ALLOWED_ORIGINS` | empty | Extra allowed form origins, comma separated, e.g. `https://zt.example.com` |
 | `TRUST_PROXY` | empty | Number of trusted proxies, e.g. `1`; trusts `X-Forwarded-For` and `X-Forwarded-Host` |
 
@@ -557,6 +594,8 @@ cd ../..
 ./tests/http-server.test.sh
 node tests/ztncui-views.test.js
 node tests/origin.test.js
+node tests/totp.test.js
+node tests/webauthn.test.js
 ```
 
 `tests/http-server.test.sh` contains file-server security regression tests,
@@ -576,8 +615,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.5.0 -m "zerotier-planet-2.0"
-git push origin v2.5.0
+git tag -a v2.6.0 -m "zerotier-planet-2.0"
+git push origin v2.6.0
 ```
 
 The tag runs four jobs:
@@ -598,24 +637,24 @@ The tag runs four jobs:
 Release assets:
 
 ```text
-zerotier-planet-2.0-2.5.0-amd64.tar.gz    # gzipped docker save archive
-zerotier-planet-2.0-2.5.0-arm64.tar.gz    # only when include_arm64 is set
-1panel-app-2.5.0.tar.gz                          # 1Panel app package
+zerotier-planet-2.0-2.6.0-amd64.tar.gz    # gzipped docker save archive
+zerotier-planet-2.0-2.6.0-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-2.6.0.tar.gz                          # 1Panel app package
 1panel-scheduled-update.sh                          # cron helper: update the app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-2.5.0.txt                            # load and run instructions
+LOAD-amd64-2.6.0.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < zerotier-planet-2.0-2.5.0-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.6.0-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`docker.io/lonelyx/zerotier-planet:2.5.0`, so the `image:` field in
+`docker.io/lonelyx/zerotier-planet:2.6.0`, so the `image:` field in
 `docker-compose.yml` can point straight at it.
 
 ### Image registries
@@ -631,21 +670,21 @@ multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
 
 ```bash
 # default: Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.5.0
+docker pull docker.io/lonelyx/zerotier-planet:2.6.0
 
 # alternative: GHCR (use it if Docker Hub is unreachable)
-docker pull ghcr.io/ban-sky/zerotier-planet:2.5.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.6.0
 ```
 
 Tag semantics (identical on both registries):
 
 | Tag | Contents | Updated when |
 | --- | --- | --- |
-| `2.5.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `2.6.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
 | `latest` | the most recent release | same |
 | `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
 
-Current `2.5.0` manifest (identical on both registries):
+Current `2.6.0` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -688,13 +727,13 @@ Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.5.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.6.0
 
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.5.0 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.6.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub (useful when it is the faster registry for you)
-sudo IMAGE=lonelyx/zerotier-planet:2.5.0 \
+sudo IMAGE=lonelyx/zerotier-planet:2.6.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -703,7 +742,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.5.0 \
+  --image docker.io/lonelyx/zerotier-planet:2.6.0 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 

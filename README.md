@@ -7,7 +7,7 @@
 > **2.4.3 起默认使用 Docker Hub 镜像**
 > 项目名是 `zerotier-planet-2.0`（2.4.2 起由 `docker-zerotier-planet-2.0` 更名而来）；镜像同时发布到
 > `docker.io/lonelyx/zerotier-planet`（**默认**）与 `ghcr.io/ban-sky/zerotier-planet`（备选），
-> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.5.0`）。旧仓库地址与旧镜像名继续可用。
+> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.6.0`）。旧仓库地址与旧镜像名继续可用。
 
 > **许可证提醒（重要）**
 > ZeroTier 1.16 起把 controller 移到了 `nonfree/`，采用 *ZeroTier SOURCE-AVAILABLE
@@ -140,10 +140,10 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。截图取�
 - **1Panel 计划任务脚本**：`scripts/1panel-scheduled-update.sh` 可挂到面板计划任务，
   按周期更新应用商店包并重启已安装实例。
 
-### 部署集成（2.5.0）
+### 部署集成（2.6.0）
 
 - 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
-  可视化启停与升级；镜像 tag 固定版本号（如 `2.5.0`，不带 `v`），方便面板比对版本。
+  可视化启停与升级；镜像 tag 固定版本号（如 `2.6.0`，不带 `v`），方便面板比对版本。
 - 应用包、`docker save` 归档与计划任务脚本一起发布在 Release，`SHA256SUMS` 覆盖全部附件。
 
 ## 快速开始
@@ -177,7 +177,7 @@ cd zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) 里的
 > `zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.5.0`。
+> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.6.0`。
 
 ### 方式二：Compose
 
@@ -206,7 +206,7 @@ sudo ./scripts/install-1panel-app.sh
 不想 clone 也可以用 Release 附件：
 
 ```bash
-sudo tar -xzf 1panel-app-2.5.0.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.6.0.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
@@ -232,7 +232,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 
 > 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
 > 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
-> 应用包里的镜像 tag 固定为 `2.5.0`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
+> 应用包里的镜像 tag 固定为 `2.6.0`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
 
 #### 计划任务：自动跟进最新版本
 
@@ -261,7 +261,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # 只更新应用包，不动运行中的容器；或固定到某个版本
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.5.0
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.6.0
 ```
 
 在面板里配置：**计划任务 → 创建计划任务 → 任务类型 `Shell 脚本`**，执行周期按需
@@ -307,6 +307,33 @@ curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/sc
 密钥与备用码哈希跟密码哈希一起保存在控制器的 `ztncui-passwd`（0600，位于
 `data/config`）。全部校验在服务端完成，不需要外部服务、不发短信，也没有新增运行时依赖。
 验证器里显示的名称由 `TOTP_ISSUER` 决定（默认 `ZeroTier Planet`）。
+
+> 两步验证与通行密钥互斥：启用了其中一个，另一个就不能再启用。切换见下方「通行密钥」。
+
+### 通行密钥（Passkey / WebAuthn）
+
+除了 TOTP，还可以用**通行密钥**作为第二因素：浏览器调用指纹、面容或系统 PIN，私钥留在
+用户设备上，服务器只保存公钥。**两者只能选一个**（同一账号启用其一后，另一个会被拒绝）。
+
+前提条件是 WebAuthn 的硬性要求，缺一不可：
+
+- 用**域名**访问（裸 IP 不行），例如 `https://zt.example.com`；
+- HTTPS 且证书受浏览器信任（自签证书会被拒绝，localhost 除外）。
+
+满足条件时：**用户 → 通行密钥**（`/users/<用户名>/passkeys`）→ **添加通行密钥**，
+浏览器弹窗确认后即绑定。之后登录在密码正确后会跳到 `/login/passkey`，由浏览器完成验证。
+
+如果部署在 IP 或不带证书的 HTTPS 上，页面会直接说明原因，而不是给一个点了就失败的按钮。
+反向代理接管 TLS 时，可以用环境变量固定依赖方信息：
+
+```bash
+-e PASSKEY_RP_ID=zt.example.com \
+-e PASSKEY_ORIGIN=https://zt.example.com
+```
+
+挑战值存在会话里、5 分钟过期、只能用一次；每个凭据记录签名计数器，重放的断言会被拒绝。
+想从通行密钥切回 TOTP：先在通行密钥页面删掉全部凭据，再到两步验证页面开启 TOTP
+（反之亦然）。
 
 ### 首次登录
 
@@ -379,6 +406,9 @@ zerotier-cli orbit <moon-id> <moon-id>
 | `HTTPS_HOST` | `0.0.0.0` | 设为 `::` 可同时监听 IPv6 |
 | `DEFAULT_LOCALE` | `zh-CN` | 界面默认语言，可选 `zh-CN` / `en` |
 | `TOTP_ISSUER` | `ZeroTier Planet` | 两步验证在验证器里显示的发行方名称 |
+| `PASSKEY_RP_ID` | 请求的域名 | 通行密钥的依赖方 ID；反代后与对外域名不一致时必须设置 |
+| `PASSKEY_ORIGIN` | 请求的来源 | 通行密钥期望的来源，如 `https://zt.example.com` |
+| `PASSKEY_RP_NAME` | `ZeroTier Planet` | 通行密钥弹窗里显示的名称 |
 | `ALLOWED_ORIGINS` | 空 | 额外允许的表单来源，逗号分隔，如 `https://zt.example.com` |
 | `TRUST_PROXY` | 空 | 反向代理层数，如 `1`；启用后信任 `X-Forwarded-For` 与 `X-Forwarded-Host` |
 
@@ -515,10 +545,13 @@ cd ../..
 ./tests/http-server.test.sh
 node tests/ztncui-views.test.js
 node tests/origin.test.js
+node tests/totp.test.js
+node tests/webauthn.test.js
 ```
 
 仓库提供 `tests/http-server.test.sh`（文件服务器安全回归）、`tests/ztncui-views.test.js`
-（全部 Pug 视图编译）与 `tests/origin.test.js`（来源校验 / 反代场景，18 项断言）。
+（全部 Pug 视图编译）、`tests/origin.test.js`（来源校验 / 反代场景，18 项断言）、
+`tests/totp.test.js`（RFC 6238 向量，13 项断言）与 `tests/webauthn.test.js`（注册/断言/重放，29 项断言）。
 
 ### GitHub Actions 构建与发布
 
@@ -532,8 +565,8 @@ node tests/origin.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.5.0 -m "zerotier-planet-2.0"
-git push origin v2.5.0
+git tag -a v2.6.0 -m "zerotier-planet-2.0"
+git push origin v2.6.0
 ```
 
 推送标签后，Actions 会依次执行：
@@ -551,23 +584,23 @@ git push origin v2.5.0
 Release 附件：
 
 ```text
-zerotier-planet-2.0-2.5.0-amd64.tar.gz    # docker save 归档（gzip）
-zerotier-planet-2.0-2.5.0-arm64.tar.gz    # 仅当勾选 include_arm64
-1panel-app-2.5.0.tar.gz                          # 1Panel 本地应用包
+zerotier-planet-2.0-2.6.0-amd64.tar.gz    # docker save 归档（gzip）
+zerotier-planet-2.0-2.6.0-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-2.6.0.tar.gz                          # 1Panel 本地应用包
 1panel-scheduled-update.sh                          # 计划任务：自动更新应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-2.5.0.txt                            # 加载与运行说明
+LOAD-amd64-2.6.0.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < zerotier-planet-2.0-2.5.0-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.6.0-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.5.0`，可以直接用
+归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.6.0`，可以直接用
 `docker-compose.yml` 里的 `image:` 字段引用（换一台机器时也可以 `docker tag` 成同一个名字）。
 
 ### 镜像地址
@@ -582,23 +615,23 @@ manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull
 
 ```bash
 # 默认：Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.5.0
+docker pull docker.io/lonelyx/zerotier-planet:2.6.0
 
 # 备选：GHCR（拉不动 Docker Hub 时用）
-docker pull ghcr.io/ban-sky/zerotier-planet:2.5.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.6.0
 ```
 
-tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.5.0`），镜像 tag 不带 `v`（`2.5.0`）。**
+tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.6.0`），镜像 tag 不带 `v`（`2.6.0`）。**
 
 
 
 | tag | 内容 | 何时更新 |
 | --- | --- | --- |
-| `2.5.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `2.6.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
 | `latest` | 最近一次发布 | 同上 |
 | `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
 
-当前 `2.5.0` 的 manifest（两边一致）：
+当前 `2.6.0` 的 manifest（两边一致）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -624,13 +657,13 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 
 ```bash
 # 默认：Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.5.0
+docker pull docker.io/lonelyx/zerotier-planet:2.6.0
 
-sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.5.0 \
+sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.6.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # 备选：GHCR
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.5.0 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.6.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -639,7 +672,7 @@ sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.5.0 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.5.0 \
+  --image docker.io/lonelyx/zerotier-planet:2.6.0 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 

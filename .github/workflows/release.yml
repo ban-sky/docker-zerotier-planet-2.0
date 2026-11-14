@@ -450,6 +450,35 @@ jobs:
           echo "wrong token status: $status"
           [ "$status" = "401" ]
 
+      - name: Verify passkey enrollment is wired through
+        run: |
+          set -euo pipefail
+          node tests/webauthn.test.js
+
+          # The browser bundle must be part of the image and served from /js.
+          curl -ksf https://127.0.0.1:3443/js/passkey.js -o /tmp/passkey.js
+          grep -q 'navigator.credentials' /tmp/passkey.js
+
+          # Anonymous callers must not reach the enrollment page or the JSON API.
+          status=$(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:3443/users/admin/passkeys)
+          echo "anonymous passkey page: $status"
+          [ "$status" = "302" ]
+          status=$(curl -ks -o /dev/null -w '%{http_code}' -X POST https://127.0.0.1:3443/users/admin/passkeys/begin)
+          echo "anonymous begin: $status"
+          [ "$status" = "302" ] || [ "$status" = "401" ]
+
+          # Without a pending sign-in there is nothing to verify against.
+          location=$(curl -ks -o /dev/null -w '%{redirect_url}' https://127.0.0.1:3443/login/passkey)
+          echo "login/passkey without a session: ${location}"
+          case "$location" in
+            *'/login') ;;
+            *) echo "::error::/login/passkey should bounce to /login"; exit 1 ;;
+          esac
+          status=$(curl -ks -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '{}' https://127.0.0.1:3443/login/passkey/begin)
+          echo "passkey begin without a session: $status"
+          [ "$status" = "401" ]
+
       - name: Verify the file server requires authentication
         run: |
           set -euo pipefail
