@@ -7,12 +7,17 @@ upgraded to **ZeroTier One 1.16.2** (verified 2026-11-06: this is still the late
 upstream stable release) with fixes for the security issues reported against the
 upstream project.
 
-> **Docker Hub is the default image since 2.4.3**
-> The project is `zerotier-planet-2.0` (renamed from `docker-zerotier-planet-2.0` in 2.4.2).
+> **Docker Hub is the default image**
+> The project is `zerotier-planet-2.0` (formerly `docker-zerotier-planet-2.0`).
 > Images are published to `docker.io/lonelyx/zerotier-planet` (**default**) and
 > `ghcr.io/ban-sky/zerotier-planet` (alternative), with tags that match the version
-> **without a leading `v`** (git tags and Releases still use `v2.6.0`). The old repository
+> **without a leading `v`** (git tags and Releases still use `v2.0.0`). The old repository
 > URL and the old image names keep working.
+
+> **Versioning**
+> Numbering restarts at `2.0.0` as `2.<feature>.<fix>`: the leading 2 identifies the 2.0
+> maintenance branch, the middle number is for feature releases (e.g. `2.1.0`) and the last
+> one for small releases and bug fixes (e.g. `2.0.1`).
 
 > **License warning (important)**
 > Since ZeroTier 1.16 the controller lives in `nonfree/` and is covered by the
@@ -50,7 +55,7 @@ five are kept), installs the new one and restarts the running instance;
 
 ### Mainland China / when github.com is unreachable
 
-Since 2.5.0 the script no longer needs `api.github.com`: it resolves the version via the
+The update script does not need `api.github.com`: it resolves the version via the
 `releases/latest` redirect, the GitHub API **and** jsDelivr metadata in turn, falls back
 to assembling the package from the jsDelivr CDN, and **gives up after 8 s per request**,
 so it can no longer look like it "keeps retrying". Pinning the channel is faster:
@@ -85,7 +90,7 @@ for every flag, or append `--help`.
 The admin UI (ztncui 0.9.0) was rebuilt as a responsive card layout: Bootstrap 3
 and jQuery are gone, the CSP only allows `'self'`, and member authorization /
 bridging use explicit dropdowns. The screenshots were taken on a 2.3.x build;
-2.4.0 drops the extra explanatory copy shown there, the structure is unchanged.
+This build drops the extra explanatory copy shown there, the structure is unchanged.
 
 | Controller overview | Networks |
 | --- | --- |
@@ -143,7 +148,7 @@ collapses into a menu:
 - Compose defaults to `read_only`, `no-new-privileges` and a `tmpfs` `/tmp`.
 - `SECURITY.md`, a disclosure process, dependency lockfiles and regression tests.
 
-### What 2.2.0 fixes and adds
+### Further fixes and additions over upstream
 
 - **`Bad request origin` on login is fixed.** The origin check now compares hostnames and
   trusts a proxy-forwarded `X-Forwarded-Host` (see
@@ -155,11 +160,11 @@ collapses into a menu:
 - **1Panel cron helper.** `scripts/1panel-scheduled-update.sh` can be scheduled as a
   1Panel cron job to refresh the app package and restart the installed instance.
 
-### Deployment integrations (2.6.0)
+### Deployment integrations (2.0.0)
 
 - Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
   panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
-  release version (e.g. `2.6.0`, no leading `v`) so the panel can detect updates.
+  release version (e.g. `2.0.0`, no leading `v`) so the panel can detect updates.
 - The app package, the `docker save` archives and the cron helper are published together in
   every Release, with `SHA256SUMS` covering all of them.
 
@@ -197,7 +202,7 @@ directory.
 > `zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `docker.io/lonelyx/zerotier-planet:2.6.0` directly.
+> `docker.io/lonelyx/zerotier-planet:2.0.0` directly.
 
 ### Option 2: Compose
 
@@ -226,7 +231,7 @@ sudo ./scripts/install-1panel-app.sh
 No checkout? Use the Release asset instead:
 
 ```bash
-sudo tar -xzf 1panel-app-2.6.0.tar.gz -C /opt/1panel/resource/apps/local
+sudo tar -xzf 1panel-app-2.0.0.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
 Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
@@ -254,7 +259,7 @@ sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
 > The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
 > the **professional edition** "custom repository" can point at the `1panel/apps`
 > directory of this repository as well. The image tag inside the package is pinned
-> to `2.6.0` (no leading `v`, never `latest`) so the panel can detect version updates.
+> to `2.0.0` (no leading `v`, never `latest`) so the panel can detect version updates.
 
 #### Cron job: follow new releases automatically
 
@@ -284,7 +289,7 @@ sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghpro
 
 # package only, or pin a version
 sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.6.0
+sudo ./scripts/1panel-scheduled-update.sh --tag v2.0.0
 ```
 
 In the panel: **Cron job → Create → Task type `Shell script`**, run it on whatever
@@ -615,8 +620,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.6.0 -m "zerotier-planet-2.0"
-git push origin v2.6.0
+git tag -a v2.0.0 -m "zerotier-planet-2.0"
+git push origin v2.0.0
 ```
 
 The tag runs four jobs:
@@ -637,24 +642,24 @@ The tag runs four jobs:
 Release assets:
 
 ```text
-zerotier-planet-2.0-2.6.0-amd64.tar.gz    # gzipped docker save archive
-zerotier-planet-2.0-2.6.0-arm64.tar.gz    # only when include_arm64 is set
-1panel-app-2.6.0.tar.gz                          # 1Panel app package
+zerotier-planet-2.0-2.0.0-amd64.tar.gz    # gzipped docker save archive
+zerotier-planet-2.0-2.0.0-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-2.0.0.tar.gz                          # 1Panel app package
 1panel-scheduled-update.sh                          # cron helper: update the app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-2.6.0.txt                            # load and run instructions
+LOAD-amd64-2.0.0.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < zerotier-planet-2.0-2.6.0-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.0.0-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`docker.io/lonelyx/zerotier-planet:2.6.0`, so the `image:` field in
+`docker.io/lonelyx/zerotier-planet:2.0.0`, so the `image:` field in
 `docker-compose.yml` can point straight at it.
 
 ### Image registries
@@ -670,21 +675,21 @@ multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
 
 ```bash
 # default: Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.6.0
+docker pull docker.io/lonelyx/zerotier-planet:2.0.0
 
 # alternative: GHCR (use it if Docker Hub is unreachable)
-docker pull ghcr.io/ban-sky/zerotier-planet:2.6.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.0.0
 ```
 
 Tag semantics (identical on both registries):
 
 | Tag | Contents | Updated when |
 | --- | --- | --- |
-| `2.6.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `2.0.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
 | `latest` | the most recent release | same |
 | `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
 
-Current `2.6.0` manifest (identical on both registries):
+Current `2.0.0` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -727,13 +732,13 @@ Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.6.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.0.0
 
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.6.0 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.0.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub (useful when it is the faster registry for you)
-sudo IMAGE=lonelyx/zerotier-planet:2.6.0 \
+sudo IMAGE=lonelyx/zerotier-planet:2.0.0 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -742,7 +747,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.6.0 \
+  --image docker.io/lonelyx/zerotier-planet:2.0.0 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 
@@ -806,15 +811,15 @@ manually.
   unreadable certificate.
 - **Certificate warning**: expected with the self-signed certificate; import it
   or switch to a trusted certificate.
-- **`Bad request origin` when logging in**: the 2.0/2.1 origin check was too strict;
-  2.2.0 fixes it. If it still happens, the request origin differs from both `Host`
+- **`Bad request origin` when logging in**: earlier origin checks were too strict;
+  this build fixes that. If it still happens, the request origin differs from both `Host`
   and `X-Forwarded-Host`: make the proxy pass `Host $host` (plus
   `X-Forwarded-Host $host`), or add the name to `ALLOWED_ORIGINS`. The container log
   prints `rejected ... origin=... candidates=...` so the mismatch is visible.
 - **Origin check fails and the log shows `origin=null`**: the browser sent an opaque
   origin (`Origin: null`), which happens in in-app WebViews (WeChat, QQ, UC), sandboxed
-  iframes and `file://` pages. Up to 2.3.0 that was treated as unparsable and rejected;
-  2.3.1 falls back to `Referer` and then behaves like a request without an `Origin`
+  iframes and `file://` pages. Early builds treated that as unparsable and rejected it;
+  this build falls back to `Referer` and then behaves like a request without an `Origin`
   header. Until you upgrade, sign in from Chrome/Edge instead.
 - **Download returns 401**: use `Authorization: Bearer <key>` rather than
   `?key=`; or copy `data/dist/planet` directly.

@@ -1,6 +1,6 @@
 services:
   zerotier-planet:
-    image: docker.io/lonelyx/zerotier-planet:2.4.4
+    image: docker.io/lonelyx/zerotier-planet:2.0.0
     container_name: ${CONTAINER_NAME}
     restart: always
     read_only: true

@@ -35,9 +35,8 @@
 `data/config/admin-password` 同级的 `data/config/ztncui-passwd` 并重启容器即可重新生成
 （会覆盖现有管理员密码）。
 
-> 2.4.3 起默认使用 Docker Hub 镜像 `docker.io/lonelyx/zerotier-planet:<版本号>`（不带 `v`）；
-> 2.4.2 的目录用 GHCR（`ghcr.io/ban-sky/zerotier-planet:2.4.2`），更早的目录仍指向旧的
-> `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v<版本号>`，都能安装。
+> 默认使用 Docker Hub 镜像 `docker.io/lonelyx/zerotier-planet:<版本号>`（不带 `v`）；
+> GitHub Container Registry 上的同名镜像 `ghcr.io/ban-sky/zerotier-planet:<版本号>` 内容一致，也可直接使用。
 
 ## 自动更新（计划任务）
 

@@ -36,9 +36,8 @@ The first sign-in forces a password change; the file is deleted once that is don
 password is lost later, delete `data/config/ztncui-passwd` next to `data/config/admin-password`
 and restart the container to generate a fresh one (this replaces the existing admin password).
 
-> Since 2.4.3 the default image is `docker.io/lonelyx/zerotier-planet:<version>` (no leading
-> `v`); 2.4.2 points at GHCR (`ghcr.io/ban-sky/zerotier-planet:2.4.2`) and earlier packages
-> still use `ghcr.io/ban-sky/docker-zerotier-planet-2.0:v<version>`. All of them install.
+> The default image is `docker.io/lonelyx/zerotier-planet:<version>` (no leading `v`); the
+> same image is also published as `ghcr.io/ban-sky/zerotier-planet:<version>`.
 
 ## Automatic updates (cron job)
 
