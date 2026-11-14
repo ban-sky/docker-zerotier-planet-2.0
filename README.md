@@ -4,10 +4,16 @@
 本项目是 [xubiaolin/docker-zerotier-planet](https://github.com/xubiaolin/docker-zerotier-planet)
 的 **2.0** 维护分支，已升级到 **ZeroTier One 1.16.2**（截至 2026-11-06 核查，上游最新稳定版仍是 1.16.2），并针对上游 issue 中的安全问题做了系统性加固。
 
+> **三步跑起来**
+> 1. 起容器（把 `<公网IP>` 换成你的 IPv4）：
+>    `docker run -d --name zerotier-planet --restart unless-stopped -e IP_ADDR4=<公网IP> -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp -v $PWD/data/config:/app/config -v $PWD/data/dist:/app/dist -v $PWD/data/one:/var/lib/zerotier-one docker.io/lonelyx/zerotier-planet:2.0.1`
+> 2. 浏览器打开 `https://<公网IP>:3443`；自签证书提示不受信任，确认继续即可。
+> 3. 初始密码在容器里：`docker exec zerotier-planet cat /app/config/admin-password`，登录后按提示改密。
+
 > **默认使用 Docker Hub 镜像**
 > 项目名是 `zerotier-planet-2.0`（原名 `docker-zerotier-planet-2.0`）；镜像同时发布到
 > `docker.io/lonelyx/zerotier-planet`（**默认**）与 `ghcr.io/ban-sky/zerotier-planet`（备选），
-> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.0.0`）。旧仓库地址与旧镜像名继续可用。
+> tag 与版本号一致、**不带 `v`**（git tag 与 Release 仍是 `v2.0.1`）。旧仓库地址与旧镜像名继续可用。
 
 > **版本号规则**
 > 从 `2.0.0` 起重编：`2.<功能>.<修复>` —— 首位固定为 2（2.0 维护分支），中间位用于功能更新
@@ -19,6 +25,16 @@
 > 本镜像因此以 `ZT_NONFREE=1` 构建。公司、政府/军队、非营利组织或任何付费服务
 > 场景**不得**使用本镜像中的 controller。详见 [NOTICE](NOTICE) 与
 > `/usr/share/licenses/zerotier/`。
+
+## 目录
+
+- [一键更新 1Panel 应用商店包](#一键更新-1panel-应用商店包)
+- [界面预览](#界面预览)
+- [相比上游的改动](#相比上游的改动)
+- [快速开始](#快速开始)：[脚本](#方式一脚本) · [Compose](#方式二compose) · [1Panel 应用商店](#方式三1panel-应用商店)
+- [配置](#配置) · [数据与备份](#数据与备份) · [从上游版本迁移](#从上游版本迁移)
+- [本地构建与测试](#本地构建与测试) · [GitHub Actions 构建与发布](#github-actions-构建与发布) · [镜像地址](#镜像地址)
+- [安全模型与限制](#安全模型与限制) · [故障排查](#故障排查) · [更新日志](CHANGELOG.md)
 
 ## 一键更新 1Panel 应用商店包
 
@@ -63,16 +79,6 @@ sudo bash /tmp/ztp-update.sh --source dir --from-dir /root/zerotier-planet-2.0 -
 ```
 
 全部参数见 [计划任务](#计划任务自动跟进最新版本)，或在脚本后面加 `--help`。
-
-## 目录
-
-- [一键更新 1Panel 应用商店包](#一键更新-1panel-应用商店包)
-- [界面预览](#界面预览)
-- [相比上游的改动](#相比上游的改动)
-- [快速开始](#快速开始)：[脚本](#方式一脚本) · [Compose](#方式二compose) · [1Panel 应用商店](#方式三1panel-应用商店)
-- [配置](#配置) · [数据与备份](#数据与备份) · [从上游版本迁移](#从上游版本迁移)
-- [本地构建与测试](#本地构建与测试) · [GitHub Actions 构建与发布](#github-actions-构建与发布) · [镜像地址](#镜像地址)
-- [安全模型与限制](#安全模型与限制) · [故障排查](#故障排查) · [更新日志](CHANGELOG.md)
 
 ## 界面预览
 
@@ -144,10 +150,10 @@ CSP 只允许 `'self'`，成员授权与桥接使用显式下拉框。截图取�
 - **1Panel 计划任务脚本**：`scripts/1panel-scheduled-update.sh` 可挂到面板计划任务，
   按周期更新应用商店包并重启已安装实例。
 
-### 部署集成（2.0.0）
+### 部署集成（2.0.1）
 
 - 附带 1Panel 应用包（`1panel/apps/zerotier-planet`）与安装脚本，可在面板里填表安装、
-  可视化启停与升级；镜像 tag 固定版本号（如 `2.0.0`，不带 `v`），方便面板比对版本。
+  可视化启停与升级；镜像 tag 固定版本号（如 `2.0.1`，不带 `v`），方便面板比对版本。
 - 应用包、`docker save` 归档与计划任务脚本一起发布在 Release，`SHA256SUMS` 覆盖全部附件。
 
 ## 快速开始
@@ -181,7 +187,7 @@ cd zerotier-planet-2.0
 > **不想在服务器上编译？** 直接下载
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) 里的
 > `zerotier-planet-2.0-<版本>-amd64.tar.gz`，`docker load` 后即可运行；
-> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.0.0`。
+> 也可以直接 `docker pull docker.io/lonelyx/zerotier-planet:2.0.1`。
 
 ### 方式二：Compose
 
@@ -198,95 +204,49 @@ docker compose up -d --build
 
 ### 方式三：1Panel 应用商店
 
-仓库自带 1Panel 应用包（[`1panel/apps/zerotier-planet`](1panel)），装进面板的本地应用商店
-后即可可视化安装。
+仓库自带 1Panel 应用包（[`1panel/apps/zerotier-planet`](1panel)），装进面板的本地商店即可
+可视化安装、启停和升级：
 
 ```bash
+# 用脚本装（会自动放到 /opt/1panel/resource/apps/local/）
 git clone https://github.com/ban-sky/zerotier-planet-2.0.git
-cd zerotier-planet-2.0
-sudo ./scripts/install-1panel-app.sh
+cd zerotier-planet-2.0 && sudo ./scripts/install-1panel-app.sh
+
+# 或用 Release 附件直接解包
+sudo tar -xzf 1panel-app-2.0.1.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
-不想 clone 也可以用 Release 附件：
+装完在面板里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装即可。要填的字段
+（公网 IPv4 必填、IPv6 可选、三个端口）、初始密码位置、常见问题都写在该应用的文档里：
+[`1panel/apps/zerotier-planet/README.md`](1panel/apps/zerotier-planet/README.md)。
 
-```bash
-sudo tar -xzf 1panel-app-2.0.0.tar.gz -C /opt/1panel/resource/apps/local
-```
-
-然后在 1Panel 里 **应用商店 → 更新应用列表**，搜索 `ZeroTier Planet` 安装。安装表单：
-
-| 字段 | 说明 |
-| --- | --- |
-| 公网 IPv4 | planet 对外公布的地址，**必填**（NAT 后填端口映射后的公网地址） |
-| 公网 IPv6 | 可选 |
-| 时区 | 默认 `Asia/Shanghai` |
-| ZeroTier 端口 | 宿主机 UDP 端口，默认 9994 |
-| 管理界面端口 | 宿主机 TCP 端口，默认 3443（HTTPS） |
-| 文件服务器端口 | 宿主机 TCP 端口，默认 3000（HTTPS，需密钥） |
-
-应用数据放在 1Panel 应用目录下的 `data/`（`config`、`dist`、`one` 三个子目录），
-升级应用容器不会丢数据。首次登录密码：
-
-```bash
-# 在面板里打开应用「终端」
-cat /app/config/admin-password
-# 或在宿主机上查找（路径随 1Panel 安装位置不同）
-sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
-```
-
-> 1Panel **社区版**的应用商店只扫描 `/opt/1panel/resource/apps/local/`；**专业版**的
-> 「自定义应用仓库」同样可以指向本仓库的 `1panel/apps` 目录。
-> 应用包里的镜像 tag 固定为 `2.0.0`（不带 `v`、不用 `latest`），这样面板才能正确识别版本更新。
+- 数据在应用目录的 `data/`（`config`、`dist`、`one`），升级容器不会丢数据。
+- 初始密码：应用「终端」里 `cat /app/config/admin-password`，或宿主机
+  `sudo find /opt/1panel/apps -maxdepth 6 -name admin-password`。
+- 社区版商店只扫描 `/opt/1panel/resource/apps/local/`；专业版的「自定义应用仓库」也可以
+  直接指向本仓库的 `1panel/apps` 目录。应用包里的镜像 tag 固定为 `2.0.1`（不带 `v`、
+  不用 `latest`），面板才能正确判断版本。
 
 #### 计划任务：自动跟进最新版本
 
-`scripts/1panel-scheduled-update.sh` 参考 [okxlin/appstore](https://github.com/okxlin/appstore)
-的分发方式，把应用包同步进 `/opt/1panel/resource/apps/local/`，面板刷新后就能看到新版本。
-两种取源可选：
+把下面这行贴进 **计划任务 → Shell 脚本**（周期按需，例如每天 04:00），脚本会自己下载、
+校验、替换应用包并重启已安装实例：
 
-| `--source` | 从哪里取包 | 说明 |
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --quiet
+```
+
+四种取源，默认 `auto` 先走 Release 再回落 CDN：
+
+| `--source` | 取包方式 | 适用场景 |
 | --- | --- | --- |
-| `release`（默认） | Release 附件 `1panel-app-<tag>.tar.gz` | 用 `SHA256SUMS` 校验，版本确定、可复现 |
-| `branch` | 仓库分支 tarball 里的 `1panel/apps/zerotier-planet` | 与 okxlin 的 `localApps` 分支同一思路，始终跟仓库最新 |
+| `release` | Release 附件 `1panel-app-<tag>.tar.gz` + `SHA256SUMS` 校验 | 版本确定、可复现 |
+| `cdn` | jsDelivr 逐文件拼装 | 访问不了 GitHub（国内推荐） |
+| `branch` | 仓库分支 tarball | 跟最新提交，类似 okxlin 的 `localApps` |
+| `dir` | 本地目录 `--from-dir` | 完全离线 |
 
-```bash
-# 先看会做什么（两种取源都支持 --dry-run）
-sudo ./scripts/1panel-scheduled-update.sh --dry-run
-sudo ./scripts/1panel-scheduled-update.sh --source branch --dry-run
-
-# 默认：从最新 Release 更新应用包，并重启已安装实例
-sudo ./scripts/1panel-scheduled-update.sh
-
-# okxlin 风格：直接跟 main 分支
-sudo ./scripts/1panel-scheduled-update.sh --source branch --branch main
-
-# 国内网络：给 GitHub 地址加镜像前缀
-sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghproxy.net/
-
-# 只更新应用包，不动运行中的容器；或固定到某个版本
-sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.0.0
-```
-
-在面板里配置：**计划任务 → 创建计划任务 → 任务类型 `Shell 脚本`**，执行周期按需
-（例如每天 04:00），脚本内容填：
-
-```bash
-/path/to/zerotier-planet-2.0/scripts/1panel-scheduled-update.sh --quiet
-```
-
-没 clone 仓库也能挂，一行搞定（脚本自己下载）：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh -o /tmp/ztp-1panel-update.sh && bash /tmp/ztp-1panel-update.sh --quiet
-```
-
-脚本做的事：确定版本（Release tag，或分支里最新的版本目录）→ 与本地
-`.../apps/local/zerotier-planet/<版本>` 比较 → 取包（Release 走 `SHA256SUMS` 校验，分支
-走 tarball）→ 备份旧包后替换（保留最近 5 个备份）→ 把已安装实例的 compose 镜像 tag 指向
-新版本并 `docker compose pull && up -d`（失败退出非 0，面板能在任务日志里看到）。
-`--quiet` 适合 cron，只输出告警和错误；`GITHUB_TOKEN` 可提高 GitHub API 限额，
-`GITHUB_MIRROR` 环境变量等价于 `--mirror`。脚本本身也随每个 Release 作为附件发布。
+`--dry-run` 预演、`--no-restart` 只更新不重启、`--mirror <前缀>` 走 GitHub 加速镜像；
+详细参数与示例见[应用文档](1panel/apps/zerotier-planet/README.md)。
 
 ### 界面语言
 
@@ -569,8 +529,8 @@ node tests/webauthn.test.js
 #### 发布一个版本
 
 ```bash
-git tag -a v2.0.0 -m "zerotier-planet-2.0"
-git push origin v2.0.0
+git tag -a v2.0.1 -m "zerotier-planet-2.0"
+git push origin v2.0.1
 ```
 
 推送标签后，Actions 会依次执行：
@@ -588,23 +548,23 @@ git push origin v2.0.0
 Release 附件：
 
 ```text
-zerotier-planet-2.0-2.0.0-amd64.tar.gz    # docker save 归档（gzip）
-zerotier-planet-2.0-2.0.0-arm64.tar.gz    # 仅当勾选 include_arm64
-1panel-app-2.0.0.tar.gz                          # 1Panel 本地应用包
+zerotier-planet-2.0-2.0.1-amd64.tar.gz    # docker save 归档（gzip）
+zerotier-planet-2.0-2.0.1-arm64.tar.gz    # 仅当勾选 include_arm64
+1panel-app-2.0.1.tar.gz                          # 1Panel 本地应用包
 1panel-scheduled-update.sh                          # 计划任务：自动更新应用包
 SHA256SUMS                                       # 每个归档的校验和
 SOURCE                                           # 上游 commit 与构建参数
-LOAD-amd64-2.0.0.txt                            # 加载与运行说明
+LOAD-amd64-2.0.1.txt                            # 加载与运行说明
 ```
 
 在服务器上使用归档（无需自己编译、无需 registry 登录）：
 
 ```bash
-docker load < zerotier-planet-2.0-2.0.0-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.0.1-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
-归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.0.0`，可以直接用
+归档里保存的 tag 是 `docker.io/lonelyx/zerotier-planet:2.0.1`，可以直接用
 `docker-compose.yml` 里的 `image:` 字段引用（换一台机器时也可以 `docker tag` 成同一个名字）。
 
 ### 镜像地址
@@ -619,23 +579,23 @@ manifest，`linux/amd64` + `linux/arm64`），都是**公开**的，`docker pull
 
 ```bash
 # 默认：Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.0.0
+docker pull docker.io/lonelyx/zerotier-planet:2.0.1
 
 # 备选：GHCR（拉不动 Docker Hub 时用）
-docker pull ghcr.io/ban-sky/zerotier-planet:2.0.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.0.1
 ```
 
-tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.0.0`），镜像 tag 不带 `v`（`2.0.0`）。**
+tag 含义（两个 registry 相同）。**GitHub Release 与 git tag 带 `v`（`v2.0.1`），镜像 tag 不带 `v`（`2.0.1`）。**
 
 
 
 | tag | 内容 | 何时更新 |
 | --- | --- | --- |
-| `2.0.0` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
+| `2.0.1` | 该版本发布时的多架构镜像 | 打 `v*` tag 或手动 dispatch Release |
 | `latest` | 最近一次发布 | 同上 |
 | `sha-<commit>` | 某个 `main` 提交的构建 | push 到 `main` 且改动 `Dockerfile` / `patch/**` |
 
-当前 `2.0.0` 的 manifest（两边一致）：
+当前 `2.0.1` 的 manifest（两边一致）：
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -661,13 +621,13 @@ echo "$CR_PAT" | docker login ghcr.io -u ban-sky --password-stdin
 
 ```bash
 # 默认：Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.0.0
+docker pull docker.io/lonelyx/zerotier-planet:2.0.1
 
-sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.0.0 \
+sudo IMAGE=docker.io/lonelyx/zerotier-planet:2.0.1 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # 备选：GHCR
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.0.0 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.0.1 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -676,7 +636,7 @@ sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.0.0 \
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.0.0 \
+  --image docker.io/lonelyx/zerotier-planet:2.0.1 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 
@@ -746,7 +706,7 @@ controller/view 覆盖是否仍兼容。README/SECURITY 中的版本号与变更
 - **容器反复重启**：`docker logs <容器名>`；常见原因是公网 IP 未设置、端口占用、
   卷权限不是 uid 1000，或证书不可读。
 - **浏览器证书错误**：自签证书属预期；导入证书或改用受信任证书。
-- **登录时提示 `Bad request origin`**：旧的来源校验过于严格，已在 2.0.0 修复。
+- **登录时提示 `Bad request origin`**：旧的来源校验过于严格，已修复。
   若仍出现，说明请求来源与 `Host`/`X-Forwarded-Host` 都不同：把反代设为传递
   `Host $host`（并加 `X-Forwarded-Host $host`），或把域名写进 `ALLOWED_ORIGINS`，
   容器日志里会打印 `rejected ... origin=... candidates=...` 便于定位。

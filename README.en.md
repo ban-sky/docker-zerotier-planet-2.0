@@ -7,11 +7,17 @@ upgraded to **ZeroTier One 1.16.2** (verified 2026-11-06: this is still the late
 upstream stable release) with fixes for the security issues reported against the
 upstream project.
 
+> **Three steps to a running planet**
+> 1. Start the container (replace `<public-ip>` with your IPv4):
+>    `docker run -d --name zerotier-planet --restart unless-stopped -e IP_ADDR4=<public-ip> -p 9994:9994/udp -p 3443:3443/tcp -p 3000:3000/tcp -v $PWD/data/config:/app/config -v $PWD/data/dist:/app/dist -v $PWD/data/one:/var/lib/zerotier-one docker.io/lonelyx/zerotier-planet:2.0.1`
+> 2. Open `https://<public-ip>:3443` and accept the self-signed certificate warning.
+> 3. The initial password is inside the container: `docker exec zerotier-planet cat /app/config/admin-password`; change it when prompted.
+
 > **Docker Hub is the default image**
 > The project is `zerotier-planet-2.0` (formerly `docker-zerotier-planet-2.0`).
 > Images are published to `docker.io/lonelyx/zerotier-planet` (**default**) and
 > `ghcr.io/ban-sky/zerotier-planet` (alternative), with tags that match the version
-> **without a leading `v`** (git tags and Releases still use `v2.0.0`). The old repository
+> **without a leading `v`** (git tags and Releases still use `v2.0.1`). The old repository
 > URL and the old image names keep working.
 
 > **Versioning**
@@ -26,6 +32,16 @@ upstream project.
 > therefore built with `ZT_NONFREE=1`. Companies, government/military,
 > non-profits/charities and paid services **must not** use the bundled
 > controller. See [NOTICE](NOTICE) and `/usr/share/licenses/zerotier/`.
+
+## Contents
+
+- [One-line update for the 1Panel app store](#one-line-update-for-the-1panel-app-store)
+- [Screenshots](#screenshots)
+- [Changes from upstream](#changes-from-upstream)
+- [Quick start](#quick-start): [script](#option-1-script) · [Compose](#option-2-compose) · [1Panel App Store](#option-3-1panel-app-store)
+- [Configuration](#configuration) · [Data and backups](#data-and-backups) · [Migrating from upstream](#migrating-from-upstream)
+- [Local build and tests](#local-build-and-tests) · [Building and releasing with GitHub Actions](#building-and-releasing-with-github-actions) · [Image registries](#image-registries)
+- [Security model and limitations](#security-model-and-limitations) · [Troubleshooting](#troubleshooting) · [Changelog](CHANGELOG.md)
 
 ## One-line update for the 1Panel app store
 
@@ -74,16 +90,6 @@ sudo bash /tmp/ztp-update.sh --source dir --from-dir /root/zerotier-planet-2.0 -
 
 See [cron job](#cron-job-follow-new-releases-automatically)
 for every flag, or append `--help`.
-
-## Contents
-
-- [One-line update for the 1Panel app store](#one-line-update-for-the-1panel-app-store)
-- [Screenshots](#screenshots)
-- [Changes from upstream](#changes-from-upstream)
-- [Quick start](#quick-start): [script](#option-1-script) · [Compose](#option-2-compose) · [1Panel App Store](#option-3-1panel-app-store)
-- [Configuration](#configuration) · [Data and backups](#data-and-backups) · [Migrating from upstream](#migrating-from-upstream)
-- [Local build and tests](#local-build-and-tests) · [Building and releasing with GitHub Actions](#building-and-releasing-with-github-actions) · [Image registries](#image-registries)
-- [Security model and limitations](#security-model-and-limitations) · [Troubleshooting](#troubleshooting) · [Changelog](CHANGELOG.md)
 
 ## Screenshots
 
@@ -160,11 +166,11 @@ collapses into a menu:
 - **1Panel cron helper.** `scripts/1panel-scheduled-update.sh` can be scheduled as a
   1Panel cron job to refresh the app package and restart the installed instance.
 
-### Deployment integrations (2.0.0)
+### Deployment integrations (2.0.1)
 
 - Ships a 1Panel app package (`1panel/apps/zerotier-planet`) plus an install script, so the
   panel can install, start/stop and upgrade it from a form; the image tag is pinned to the
-  release version (e.g. `2.0.0`, no leading `v`) so the panel can detect updates.
+  release version (e.g. `2.0.1`, no leading `v`) so the panel can detect updates.
 - The app package, the `docker save` archives and the cron helper are published together in
   every Release, with `SHA256SUMS` covering all of them.
 
@@ -202,7 +208,7 @@ directory.
 > `zerotier-planet-2.0-<version>-amd64.tar.gz` from the
 > [Releases](https://github.com/ban-sky/zerotier-planet-2.0/releases) page
 > and `docker load` it, or pull
-> `docker.io/lonelyx/zerotier-planet:2.0.0` directly.
+> `docker.io/lonelyx/zerotier-planet:2.0.1` directly.
 
 ### Option 2: Compose
 
@@ -219,100 +225,50 @@ docker compose up -d --build
 
 ### Option 3: 1Panel App Store
 
-The repository ships a 1Panel app package ([`1panel/apps/zerotier-planet`](1panel)),
-so the panel can install it from a form instead of a shell session.
+The repository ships a 1Panel app package ([`1panel/apps/zerotier-planet`](1panel)) so the
+planet can be installed, started and upgraded from the panel:
 
 ```bash
+# installer: drops the package into /opt/1panel/resource/apps/local/
 git clone https://github.com/ban-sky/zerotier-planet-2.0.git
-cd zerotier-planet-2.0
-sudo ./scripts/install-1panel-app.sh
+cd zerotier-planet-2.0 && sudo ./scripts/install-1panel-app.sh
+
+# or unpack the release asset directly
+sudo tar -xzf 1panel-app-2.0.1.tar.gz -C /opt/1panel/resource/apps/local
 ```
 
-No checkout? Use the Release asset instead:
+Then **App Store → Update app list** and install `ZeroTier Planet`. The form fields (public
+IPv4 required, IPv6 optional, three ports), the initial password and the FAQ live in the app
+documentation: [`1panel/apps/zerotier-planet/README_en.md`](1panel/apps/zerotier-planet/README_en.md).
 
-```bash
-sudo tar -xzf 1panel-app-2.0.0.tar.gz -C /opt/1panel/resource/apps/local
-```
-
-Then open 1Panel → **App Store → Update app list**, search for `ZeroTier Planet`
-and install. The form asks for:
-
-| Field | Meaning |
-| --- | --- |
-| Public IPv4 | the address advertised in the planet, **required** (use the mapped address behind NAT) |
-| Public IPv6 | optional |
-| Time zone | defaults to `Asia/Shanghai` |
-| ZeroTier port | host UDP port, default 9994 |
-| Admin UI port | host TCP port, default 3443 (HTTPS) |
-| File server port | host TCP port, default 3000 (HTTPS, key required) |
-
-Data lives in `data/` inside the 1Panel app directory (`config`, `dist`, `one`),
-so upgrading the container keeps everything. First login password:
-
-```bash
-# open the app "Terminal" in the panel
-cat /app/config/admin-password
-# or look for it on the host (path depends on the 1Panel install location)
-sudo find /opt/1panel/apps -maxdepth 6 -name admin-password
-```
-
-> The 1Panel **community edition** only scans `/opt/1panel/resource/apps/local/`;
-> the **professional edition** "custom repository" can point at the `1panel/apps`
-> directory of this repository as well. The image tag inside the package is pinned
-> to `2.0.0` (no leading `v`, never `latest`) so the panel can detect version updates.
+- Data sits in the app's `data/` directory (`config`, `dist`, `one`); upgrades keep it.
+- Initial password: `cat /app/config/admin-password` in the app terminal, or
+  `sudo find /opt/1panel/apps -maxdepth 6 -name admin-password` on the host.
+- The community edition only scans `/opt/1panel/resource/apps/local/`; the pro "custom app
+  repository" can also point at this repo's `1panel/apps` directory. The package pins the
+  image tag to `2.0.1` (no `v`, never `latest`) so the panel can detect upgrades.
 
 #### Cron job: follow new releases automatically
 
-`scripts/1panel-scheduled-update.sh` follows the same distribution idea as
-[okxlin/appstore](https://github.com/okxlin/appstore): it syncs the app package into
-`/opt/1panel/resource/apps/local/`, so the panel lists the new version right after a
-refresh. Two sources are available:
+Paste this into **Cron job → Shell script** (any schedule, e.g. daily at 04:00); it downloads,
+verifies and swaps the app package, then restarts the installed instance:
 
-| `--source` | Where the package comes from | Notes |
+```bash
+curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh | sudo bash -s -- --quiet
+```
+
+Four sources, `auto` tries the release first and falls back to the CDN:
+
+| `--source` | How the package is fetched | When to use |
 | --- | --- | --- |
-| `release` (default) | Release asset `1panel-app-<tag>.tar.gz` | verified against `SHA256SUMS`, reproducible |
-| `branch` | `1panel/apps/zerotier-planet` inside a branch tarball | same idea as okxlin's `localApps` branch, always tracks the repo |
+| `release` | release asset `1panel-app-<tag>.tar.gz` + `SHA256SUMS` | pinned, reproducible |
+| `cdn` | file-by-file from jsDelivr | GitHub is unreachable (best in CN) |
+| `branch` | repository branch tarball | tracks the newest commit, like okxlin's `localApps` |
+| `dir` | local directory via `--from-dir` | fully offline |
 
-```bash
-# see what it would do (both sources support --dry-run)
-sudo ./scripts/1panel-scheduled-update.sh --dry-run
-sudo ./scripts/1panel-scheduled-update.sh --source branch --dry-run
-
-# default: newest Release, package + running instance
-sudo ./scripts/1panel-scheduled-update.sh
-
-# okxlin style: track the main branch
-sudo ./scripts/1panel-scheduled-update.sh --source branch --branch main
-
-# mainland China: prefix GitHub URLs with a mirror
-sudo ./scripts/1panel-scheduled-update.sh --source branch --mirror https://ghproxy.net/
-
-# package only, or pin a version
-sudo ./scripts/1panel-scheduled-update.sh --no-restart
-sudo ./scripts/1panel-scheduled-update.sh --tag v2.0.0
-```
-
-In the panel: **Cron job → Create → Task type `Shell script`**, run it on whatever
-schedule you like (e.g. daily at 04:00), with this command:
-
-```bash
-/path/to/zerotier-planet-2.0/scripts/1panel-scheduled-update.sh --quiet
-```
-
-No checkout on the host? One line in the cron entry is enough:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ban-sky/zerotier-planet-2.0/main/scripts/1panel-scheduled-update.sh -o /tmp/ztp-1panel-update.sh && bash /tmp/ztp-1panel-update.sh --quiet
-```
-
-It resolves the version to install (Release tag, or the newest version directory in
-the branch), compares it with `.../apps/local/zerotier-planet/<version>`, fetches the
-package (checksum-verified for Releases, tarball for branches), keeps a backup of the
-previous package (last five are kept), then re-points the installed compose file at
-the new image tag and runs `docker compose pull && up -d` — a failure exits non-zero
-and shows up in the cron log. `--quiet` is cron-friendly (warnings and errors only);
-`GITHUB_TOKEN` raises the GitHub API rate limit and `GITHUB_MIRROR` is equivalent to
-`--mirror`. The script is also attached to every Release.
+`--dry-run` previews, `--no-restart` only updates the package, `--mirror <prefix>` goes
+through a GitHub mirror. Details and examples are in the
+[app documentation](1panel/apps/zerotier-planet/README_en.md).
 
 ### Interface language
 
@@ -620,8 +576,8 @@ normally — nothing has to be pasted into the web UI):
 #### Publishing a version
 
 ```bash
-git tag -a v2.0.0 -m "zerotier-planet-2.0"
-git push origin v2.0.0
+git tag -a v2.0.1 -m "zerotier-planet-2.0"
+git push origin v2.0.1
 ```
 
 The tag runs four jobs:
@@ -642,24 +598,24 @@ The tag runs four jobs:
 Release assets:
 
 ```text
-zerotier-planet-2.0-2.0.0-amd64.tar.gz    # gzipped docker save archive
-zerotier-planet-2.0-2.0.0-arm64.tar.gz    # only when include_arm64 is set
-1panel-app-2.0.0.tar.gz                          # 1Panel app package
+zerotier-planet-2.0-2.0.1-amd64.tar.gz    # gzipped docker save archive
+zerotier-planet-2.0-2.0.1-arm64.tar.gz    # only when include_arm64 is set
+1panel-app-2.0.1.tar.gz                          # 1Panel app package
 1panel-scheduled-update.sh                          # cron helper: update the app package
 SHA256SUMS                                       # checksums for every archive
 SOURCE                                           # upstream commits and build args
-LOAD-amd64-2.0.0.txt                            # load and run instructions
+LOAD-amd64-2.0.1.txt                            # load and run instructions
 ```
 
 On a server, use the archive — no compiler and no registry login required:
 
 ```bash
-docker load < zerotier-planet-2.0-2.0.0-amd64.tar.gz
+docker load < zerotier-planet-2.0-2.0.1-amd64.tar.gz
 docker images | grep zerotier-planet-2.0
 ```
 
 The archive restores the tag
-`docker.io/lonelyx/zerotier-planet:2.0.0`, so the `image:` field in
+`docker.io/lonelyx/zerotier-planet:2.0.1`, so the `image:` field in
 `docker-compose.yml` can point straight at it.
 
 ### Image registries
@@ -675,21 +631,21 @@ multi-arch manifest (`linux/amd64` + `linux/arm64`) and both are **public**, so
 
 ```bash
 # default: Docker Hub
-docker pull docker.io/lonelyx/zerotier-planet:2.0.0
+docker pull docker.io/lonelyx/zerotier-planet:2.0.1
 
 # alternative: GHCR (use it if Docker Hub is unreachable)
-docker pull ghcr.io/ban-sky/zerotier-planet:2.0.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.0.1
 ```
 
 Tag semantics (identical on both registries):
 
 | Tag | Contents | Updated when |
 | --- | --- | --- |
-| `2.0.0` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
+| `2.0.1` | the multi-arch image of that release | a `v*` tag is pushed or Release is dispatched |
 | `latest` | the most recent release | same |
 | `sha-<commit>` | build of one `main` commit | push to `main` touching `Dockerfile` / `patch/**` |
 
-Current `2.0.0` manifest (identical on both registries):
+Current `2.0.1` manifest (identical on both registries):
 
 ```text
 MediaType: application/vnd.oci.image.index.v1+json
@@ -732,13 +688,13 @@ Pull and deploy without compiling on the server (either registry, same image):
 
 ```bash
 # GHCR
-docker pull ghcr.io/ban-sky/zerotier-planet:2.0.0
+docker pull ghcr.io/ban-sky/zerotier-planet:2.0.1
 
-sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.0.0 \
+sudo IMAGE=ghcr.io/ban-sky/zerotier-planet:2.0.1 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 
 # Docker Hub (useful when it is the faster registry for you)
-sudo IMAGE=lonelyx/zerotier-planet:2.0.0 \
+sudo IMAGE=lonelyx/zerotier-planet:2.0.1 \
   PULL=1 ./deploy.sh --pull --name myztplanet --data ./data/zerotier
 ```
 
@@ -747,7 +703,7 @@ Migrating an old deployment directly from a workflow image:
 ```bash
 sudo ./scripts/migrate-from-upstream.sh \
   --pull \
-  --image docker.io/lonelyx/zerotier-planet:2.0.0 \
+  --image docker.io/lonelyx/zerotier-planet:2.0.1 \
   --target-data /opt/zerotier-planet-2.0/data/zerotier
 ```
 
